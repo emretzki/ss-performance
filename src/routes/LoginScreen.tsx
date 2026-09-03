@@ -12,8 +12,26 @@ export function LoginScreen() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [mode, setMode] = useState<"login" | "forgot" | "forgot-sent">("login");
+  const [resetSending, setResetSending] = useState(false);
 
   if (profile) return <Navigate to="/calendar" replace />;
+
+  async function handleForgotSubmit(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (!supabase) return;
+    setResetSending(true);
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setResetSending(false);
+    if (resetError) {
+      setError(resetError.message);
+      return;
+    }
+    setMode("forgot-sent");
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -45,7 +63,44 @@ export function LoginScreen() {
           <p className="mt-1.5 text-[13px] text-[var(--color-ash)]">Performance &amp; Coaching · Yönetim Paneli</p>
         </div>
 
-        {isSupabaseConfigured ? (
+        {isSupabaseConfigured && mode === "forgot-sent" ? (
+          <div className="flex w-full flex-col items-center gap-4 text-center">
+            <p className="text-[14px] text-[var(--color-ink)]">
+              <span className="font-medium">{email}</span> adresine bir sıfırlama bağlantısı gönderdik. Gelen kutunu (ve spam klasörünü) kontrol et.
+            </p>
+            <button onClick={() => setMode("login")} className="text-[13px] font-medium text-[var(--color-gold-deep)] underline underline-offset-4">
+              Girişe dön
+            </button>
+          </div>
+        ) : isSupabaseConfigured && mode === "forgot" ? (
+          <form onSubmit={handleForgotSubmit} className="flex w-full flex-col gap-3">
+            <p className="text-[13px] text-[var(--color-ash)]">E-postanı gir, şifreni sıfırlaman için bir bağlantı gönderelim.</p>
+            <div>
+              <label className="mb-1.5 block text-[13px] font-medium text-[var(--color-ink-soft)]">E-posta</label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-line-strong)] bg-[var(--color-surface)] px-3 text-[14px] focus:border-[var(--color-gold)]"
+              />
+            </div>
+            {error && <p className="text-[13px] text-[var(--color-danger)]">{error}</p>}
+            <Button type="submit" size="lg" disabled={resetSending} className="mt-2">
+              {resetSending ? "Gönderiliyor..." : "Sıfırlama bağlantısı gönder"}
+            </Button>
+            <button
+              type="button"
+              onClick={() => {
+                setMode("login");
+                setError(null);
+              }}
+              className="text-[13px] font-medium text-[var(--color-ink-soft)]"
+            >
+              Vazgeç
+            </button>
+          </form>
+        ) : isSupabaseConfigured ? (
           <form onSubmit={handleSubmit} className="flex w-full flex-col gap-3">
             <div>
               <label className="mb-1.5 block text-[13px] font-medium text-[var(--color-ink-soft)]">E-posta</label>
@@ -58,7 +113,19 @@ export function LoginScreen() {
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-[13px] font-medium text-[var(--color-ink-soft)]">Şifre</label>
+              <div className="mb-1.5 flex items-center justify-between">
+                <label className="text-[13px] font-medium text-[var(--color-ink-soft)]">Şifre</label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode("forgot");
+                    setError(null);
+                  }}
+                  className="text-[12px] font-medium text-[var(--color-gold-deep)]"
+                >
+                  Şifremi unuttum
+                </button>
+              </div>
               <input
                 type="password"
                 required

@@ -9,9 +9,11 @@ interface AuthContextValue {
   profile: Profile | null;
   loading: boolean;
   authError: string | null;
+  passwordRecovery: boolean;
   signInMock: (profileId: string) => void;
   signOut: () => void;
   setAvatarUrl: (url: string) => void;
+  clearPasswordRecovery: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -20,12 +22,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [passwordRecovery, setPasswordRecovery] = useState(false);
 
   useEffect(() => {
     if (isSupabaseConfigured && supabase) {
       const client = supabase;
 
-      const { data: sub } = client.auth.onAuthStateChange(async (_event, session) => {
+      const { data: sub } = client.auth.onAuthStateChange(async (event, session) => {
+        if (event === "PASSWORD_RECOVERY") {
+          setPasswordRecovery(true);
+          setLoading(false);
+          return;
+        }
         if (!session) {
           setProfile(null);
           setLoading(false);
@@ -67,6 +75,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profile,
       loading,
       authError,
+      passwordRecovery,
+      clearPasswordRecovery: () => setPasswordRecovery(false),
       signInMock: (profileId: string) => {
         localStorage.setItem(SESSION_KEY, profileId);
         const p = mockDB.get().profiles.find((pr) => pr.id === profileId) ?? null;
@@ -81,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile((prev) => (prev ? { ...prev, avatarUrl: url } : prev));
       },
     }),
-    [profile, loading, authError],
+    [profile, loading, authError, passwordRecovery],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

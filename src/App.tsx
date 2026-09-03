@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { BranchProvider } from "@/contexts/BranchContext";
 import { AppShell } from "@/components/layout/AppShell";
 import { LoginScreen } from "@/routes/LoginScreen";
+import { ResetPasswordScreen } from "@/routes/ResetPasswordScreen";
 import { CalendarScreen } from "@/components/calendar/CalendarScreen";
 import { OverviewScreen } from "@/routes/OverviewScreen";
 import { ReportsScreen } from "@/routes/ReportsScreen";
@@ -11,16 +12,20 @@ import { TeamScreen } from "@/routes/TeamScreen";
 import { ProfileScreen } from "@/routes/ProfileScreen";
 
 function RequireAuth({ children }: { children: ReactNode }) {
-  const { profile, loading } = useAuth();
+  const { profile, loading, passwordRecovery } = useAuth();
   if (loading) return null;
+  if (passwordRecovery) return <ResetPasswordScreen />;
   if (!profile) return <Navigate to="/login" replace />;
   return <BranchProvider>{children}</BranchProvider>;
 }
 
 export default function App() {
+  const { passwordRecovery } = useAuth();
+
   return (
     <Routes>
-      <Route path="/login" element={<LoginScreen />} />
+      <Route path="/login" element={passwordRecovery ? <ResetPasswordScreen /> : <LoginScreen />} />
+      <Route path="/reset-password" element={<ResetPasswordScreen />} />
       <Route
         element={
           <RequireAuth>
