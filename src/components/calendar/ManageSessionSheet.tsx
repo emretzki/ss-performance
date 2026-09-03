@@ -1,0 +1,124 @@
+import { useState } from "react";
+import clsx from "clsx";
+import { X } from "@phosphor-icons/react";
+import { Button } from "@/components/ui/Button";
+import { useIsDesktop } from "@/hooks/useMediaQuery";
+import { useEscapeClose } from "@/hooks/useEscapeClose";
+import { cancelSession, updateSessionNote } from "@/lib/api";
+import { formatHourLabel } from "@/lib/calendarGrid";
+import type { GymSession } from "@/lib/types";
+
+interface ManageSessionSheetProps {
+  day: Date;
+  hour: number;
+  minute: number;
+  session: GymSession;
+  onClose: () => void;
+  onChanged: () => void;
+}
+
+export function ManageSessionSheet({ day, hour, minute, session, onClose, onChanged }: ManageSessionSheetProps) {
+  const isDesktop = useIsDesktop();
+  useEscapeClose(onClose);
+  const [notes, setNotes] = useState(session.notes ?? "");
+  const [saving, setSaving] = useState(false);
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSaveNote() {
+    setSaving(true);
+    setError(null);
+    try {
+      await updateSessionNote(session.id, notes.trim() || null);
+      onChanged();
+      onClose();
+    } catch {
+      setError("Not kaydedilemedi, tekrar dene.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleCancel() {
+    setSaving(true);
+    setError(null);
+    try {
+      await cancelSession(session.id);
+      onChanged();
+      onClose();
+    } catch {
+      setError("Ders iptal edilemedi, tekrar dene.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center lg:items-center" role="dialog" aria-modal="true">
+      <div className="absolute inset-0 bg-[var(--color-ink)]/30 transition-opacity duration-200" onClick={onClose} />
+      <div
+        className={clsx(
+          "relative z-10 flex w-full flex-col gap-5 bg-[var(--color-surface)] p-5 shadow-[var(--shadow-float)] transition-transform duration-200",
+          isDesktop ? "max-w-sm rounded-[var(--radius-lg)]" : "max-h-[90dvh] rounded-t-[var(--radius-lg)] pb-[max(20px,env(safe-area-inset-bottom))]",
+        )}
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="font-display text-[22px] font-bold leading-none tabular-nums">{formatHourLabel(hour, minute)}</p>
+            <p className="mt-1 text-[13px] text-[var(--color-ash)]">
+              {day.toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" })} · {session.durationMin} dk
+              {session.memberName ? ` · ${session.memberName}` : ""}
+            </p>
+          </div>
+          <button onClick={onClose} className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--color-ash)] hover:bg-[var(--color-surface-2)]" aria-label="Kapat">
+            <X size={18} />
+          </button>
+        </div>
+
+        {confirmingCancel ? (
+          <div className="flex flex-col gap-4">
+            <p className="text-[14px] text-[var(--color-ink)]">
+              Bu dersi iptal etmek istediğine emin misin? İptal edilen ders takvimde "İptal edildi" olarak görünmeye devam eder.
+            </p>
+            {error && <p className="text-[13px] text-[var(--color-danger)]">{error}</p>}
+            <div className="flex gap-2">
+              <Button variant="secondary" onClick={() => setConfirmingCancel(false)} className="flex-1">
+                Vazgeç
+              </Button>
+              <Button onClick={handleCancel} disabled={saving} className="flex-1 !bg-[var(--color-danger)] hover:!bg-[var(--color-danger)]">
+                {saving ? "İptal ediliyor..." : "Dersi iptal et"}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div>
+              <label className="mb-1.5 block text-[13px] font-medium text-[var(--color-ink-soft)]">Not</label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Örn. sırt egzersizlerine ağırlık ver"
+                rows={3}
+                className="w-full resize-none rounded-[var(--radius-md)] border border-[var(--color-line-strong)] bg-[var(--color-surface)] px-3 py-2.5 text-[14px] text-[var(--color-ink)] placeholder:text-[var(--color-ash)] focus:border-[var(--color-gold)]"
+              />
+            </div>
+
+            {error && <p className="text-[13px] text-[var(--color-danger)]">{error}</p>}
+
+            <div className="flex flex-col gap-2">
+              <Button size="lg" onClick={handleSaveNote} disabled={saving}>
+                {saving ? "Kaydediliyor..." : "Notu kaydet"}
+              </Button>
+              <button
+                onClick={() => setConfirmingCancel(true)}
+                className="h-10 text-[13px] font-medium text-[var(--color-danger)]"
+              >
+                Dersi iptal et
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}

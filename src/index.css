@@ -1,0 +1,75 @@
+@import "tailwindcss";
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/barlow-condensed/600.css";
+@import "@fontsource/barlow-condensed/700.css";
+@import "@fontsource/barlow-condensed/800.css";
+
+@theme {
+  --font-display: "Barlow Condensed", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, sans-serif;
+
+  --color-ink: #17140f;
+  --color-ink-soft: #4a463d;
+  --color-ash: #8a8478;
+  --color-paper: #faf8f4;
+  --color-surface: #ffffff;
+  --color-surface-2: #f1eee7;
+  --color-line: #e4e0d6;
+  --color-line-strong: #d2ccbc;
+
+  --color-gold: #96792c;
+  --color-gold-deep: #6e5a20;
+  --color-gold-soft: #c9af6e;
+  --color-gold-tint: #96792c1a;
+
+  --color-danger: #b23b3b;
+  --color-danger-tint: #b23b3b14;
+  --color-success: #3f7d4e;
+
+  --color-pt-clay: #b0704a;
+  --color-pt-moss: #6f7d4f;
+  --color-pt-slate: #556478;
+  --color-pt-plum: #7a5c74;
+  --color-pt-stone: #6b6458;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  --shadow-float: 0 8px 24px rgba(23, 20, 15, 0.12);
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "source": "described (Cal.com / Notion Calendar / Linear — dense, readable interface conventions, no screenshots measured)",
+  "design_system": {
+    "color": {
+      "surface": {
+        "background": "#FAF8F4",
+        "surface_1": "#FFFFFF",
+        "surface_2": "#F1EEE7",
+        "border": "#E4E0D6",
+        "border_strong": "#D2CCBC"
+      },
+      "neutral": {
+        "scale": ["#FAF8F4", "#F1EEE7", "#D2CCBC", "#8A8478", "#4A463D", "#17140F"],
+        "usage": "text/ink from #17140F (near-black, warm — matches logo black) down to #8A8478 for tertiary/meta text; never pure #000 or pure #FFF to keep the warm, non-generic feel"
+      },
+      "primary": { "hex": "#96792C", "usage": "the one accent — active states, primary actions, occupancy fill, selected day/PT" },
+      "accent": {
+        "hex": "#96792C",
+        "dark": "#6E5A20",
+        "light": "#C9AF6E",
+        "tint_10": "#96792C1A",
+        "usage": "dark for pressed/hover, light for subtle tints (chips, selected-cell backgrounds), tint_10 for faint fills — gold never used as large background fields, only as accents/states"
+      },
+      "semantic": {
+        "success": "#3F7D4E",
+        "warning": "#B8862F",
+        "danger": "#B23B3B",
+        "info": "#3D6E8C",
+        "usage": "status colors kept separate from brand gold so 'full slot' vs 'selected/active' are never visually confused"
+      }
+    },
+    "typography": {
+      "family_display": "condensed/bold geometric sans for headings and numerals (e.g. Barlow Condensed / Archivo — echoes the logo's bold blocky wordmark)",
+      "family_body": "humanist sans, high x-height, strong at small sizes (e.g. Inter / Manrope)",
+      "family_mono": "for time labels/durations only if needed (e.g. JetBrains Mono) — optional, not required",
+      "scale_ratio": 1.2,
+      "base_size_px": 15,
+      "weights": { "body": 400, "emphasis": 500, "heading": 700 },
+      "line_height": { "dense_ui": 1.3, "body": 1.5 },
+      "notes": "Cal.com/Linear keep body text small (13-15px) but high-contrast and tightly leaded in dense views (calendar, tables); headings jump in weight not just size."
+    },
+    "spacing": {
+      "base_unit_px": 4,
+      "density": "high but breathable — 8-12px internal padding in list rows/cells, 16-24px between logical groups, no dead air",
+      "rhythm": "consistent 8px grid; section gaps are a multiple of 24px, never arbitrary"
+    },
+    "layout": {
+      "grid": "12-col on desktop with a fixed-width time axis for calendar; single-column stacked on mobile",
+      "max_width": "desktop shell max ~1440px, calendar grid fills remaining space",
+      "asymmetry": "sidebar/filters + wide content, not centered marketing-style layouts"
+    },
+    "shape": {
+      "radius_sm_px": 6,
+      "radius_md_px": 10,
+      "radius_lg_px": 14,
+      "border_usage": "1px hairline borders (#E4E0D6) preferred over shadows to separate cells/rows — this is the key Cal.com/Linear trick for dense UI: structure via lines, not elevation"
+    },
+    "elevation": {
+      "philosophy": "near-flat; shadow reserved for genuinely floating layers (bottom sheet, dropdown, modal) — never on static cards",
+      "shadow_floating": "0 8px 24px rgba(23,20,15,0.12)"
+    },
+    "motion": {
+      "duration_micro_ms": 120,
+      "duration_transition_ms": 200,
+      "easing": "ease-out for entrances, ease-in-out for state toggles",
+      "notes": "motion is reactive only — triggered by user action (tap, toggle, drag), never ambient/decorative"
+    }
+  },
+  "design_style": {
+    "mood": "confident, calm, professional — 'well-run facility' not 'flashy startup'",
+    "personality": "precise, quiet, trustworthy",
+    "composition_strategy": "information hierarchy via type weight + spacing + one accent color, not via decoration",
+    "ornamentation": "minimal to none — no gradients, no dual shadows, no decorative icons without function",
+    "whitespace_philosophy": "generous between sections, tight within data (rows/cells) — density is earned by grouping, not by cramming everything uniformly"
+  },
+  "visual_effects": {
+    "overview": { "effect_intensity": "none", "performance_tier": "light" },
+    "notes": "not applicable — this is a functional dashboard; motion only, no canvas/WebGL/particle effects"
+  },
+  "principles_summary": [
+    "Structure with hairline borders, not shadows — shadows only for floating layers (sheets/menus/dropdowns)",
+    "One accent color used sparingly and consistently (state + action), never as a background field",
+    "Status/occupancy communicated via color + icon/shape together, never color alone",
+    "Type does the hierarchy work: weight and size jumps, not boxes and gradients",
+    "Dense views stay legible via consistent 8px rhythm and a fixed reference axis (time column) the eye can anchor to",
+    "Motion responds to touch/interaction only — no idle animation, no scroll-triggered spectacle"
+  ]
+}
