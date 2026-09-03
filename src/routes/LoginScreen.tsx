@@ -22,7 +22,15 @@ export function LoginScreen() {
     setLoading(true);
     const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
-    if (authError) setError("Giriş yapılamadı. E-posta veya şifre hatalı.");
+    if (authError) {
+      if (authError.message.toLowerCase().includes("invalid login credentials")) {
+        setError("Giriş yapılamadı. E-posta veya şifre hatalı.");
+      } else if (authError.message.toLowerCase().includes("email not confirmed")) {
+        setError("Bu e-posta henüz onaylanmamış. Supabase Dashboard → Authentication → Users'ta hesabı 'Confirm email' ile onayla.");
+      } else {
+        setError(`Giriş yapılamadı: ${authError.message}`);
+      }
+    }
   }
 
   const demoProfiles = mockDB.get().profiles;
