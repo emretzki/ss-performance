@@ -123,6 +123,14 @@ export const mockDB = {
     db = { ...db, profiles: db.profiles.map((p) => (p.id === profileId ? { ...p, avatarUrl } : p)) };
     persist();
   },
+  updateProfileFields(profileId: string, patch: Partial<Pick<Profile, "fullName" | "phone">>) {
+    db = {
+      ...db,
+      profiles: db.profiles.map((p) => (p.id === profileId ? { ...p, ...patch } : p)),
+      trainers: db.trainers.map((t) => (t.id === profileId ? { ...t, ...patch } : t)),
+    };
+    persist();
+  },
   addBranch(branch: Branch) {
     db = { ...db, branches: [...db.branches, branch] };
     persist();

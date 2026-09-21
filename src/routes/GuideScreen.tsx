@@ -153,9 +153,17 @@ export function GuideScreen() {
 
         <Section title="Profil">
           <p>
-            Sağ üstten (ya da alt menüden) <strong>Profil</strong>'e girip fotoğrafını değiştirebilir, hangi şubede
-            olduğunu görebilir ve çıkış yapabilirsin.
+            Sol menüden (mobilde alt menüden) <strong>Profil</strong>'e gir. Buradan fotoğrafını değiştirebilir, hangi
+            şubede olduğunu görebilir ve çıkış yapabilirsin. İlk girişten sonra kendi bilgilerini de kendin
+            güncelleyebilirsin — kimseye ihtiyacın yok:
           </p>
+          <Steps
+            items={[
+              "Ad soyad ve telefon numaranı Bilgilerin kartından değiştirip kaydedebilirsin.",
+              "Şifre değiştir kartından, ilk giriş için kullandığın geçici şifreyi kendi seçtiğin bir şifreyle değiştirebilirsin.",
+              "E-posta kartından e-posta adresini güncelleyebilirsin — yeni adresine bir onay bağlantısı gider, ona tıklayana kadar eski adresin geçerli kalır.",
+            ]}
+          />
         </Section>
 
         <Section title="Sorun mu var?">

@@ -14,6 +14,7 @@ interface AuthContextValue {
   signInMock: (profileId: string) => void;
   signOut: () => void;
   setAvatarUrl: (url: string) => void;
+  patchProfile: (patch: Partial<Pick<Profile, "fullName" | "phone" | "email">>) => void;
   clearPasswordRecovery: () => void;
 }
 
@@ -65,6 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           phone: p.phone,
           avatarColor: "var(--color-gold)",
           avatarUrl: p.avatar_url ?? null,
+          email: session.user.email ?? null,
         });
         setLoading(false);
       });
@@ -99,6 +101,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       setAvatarUrl: (url: string) => {
         setProfile((prev) => (prev ? { ...prev, avatarUrl: url } : prev));
+      },
+      patchProfile: (patch) => {
+        setProfile((prev) => (prev ? { ...prev, ...patch } : prev));
       },
     }),
     [profile, loading, authError, passwordRecovery],

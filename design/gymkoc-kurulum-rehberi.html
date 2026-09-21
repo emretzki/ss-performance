@@ -1,0 +1,333 @@
+<title>Gymkoç Kurulum Rehberi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --canvas: #F4F6F2;
+    --surface: #FFFFFF;
+    --surface-2: #ECEFE9;
+    --ink: #101830;
+    --ink-soft: #4A5470;
+    --ash: #6C7A9A;
+    --line: #DDE3D8;
+    --line-strong: #C4CDC0;
+    --accent: #7A9E2F;
+    --accent-ink: #101830;
+    --warn-bg: #FCEDEC;
+    --warn-ink: #A23B34;
+    --warn-line: #EFC7C3;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --canvas: #101830;
+      --surface: #172140;
+      --surface-2: #1C2850;
+      --ink: #F2F5EF;
+      --ink-soft: #B7C0D6;
+      --ash: #93A0BC;
+      --line: #93a0bc24;
+      --line-strong: #93a0bc42;
+      --accent: #B8F028;
+      --accent-ink: #101830;
+      --warn-bg: #3a1c1c;
+      --warn-ink: #ff9d94;
+      --warn-line: #5c2a26;
+    }
+  }
+  :root[data-theme="dark"] {
+    --canvas: #101830;
+    --surface: #172140;
+    --surface-2: #1C2850;
+    --ink: #F2F5EF;
+    --ink-soft: #B7C0D6;
+    --ash: #93A0BC;
+    --line: #93a0bc24;
+    --line-strong: #93a0bc42;
+    --accent: #B8F028;
+    --accent-ink: #101830;
+    --warn-bg: #3a1c1c;
+    --warn-ink: #ff9d94;
+    --warn-line: #5c2a26;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: "Space Grotesk", system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    padding-inline: 20px;
+  }
+  .wrap { max-width: 700px; margin-inline: auto; padding-block: 56px 80px; }
+
+  .kicker {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 28px;
+  }
+  .kicker svg { width: 24px; height: 24px; flex: none; }
+  .kicker span {
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ash);
+  }
+
+  h1 {
+    font-family: "Archivo", system-ui, sans-serif;
+    font-weight: 800;
+    font-size: clamp(2rem, 5vw, 2.75rem);
+    line-height: 1.05;
+    letter-spacing: -0.01em;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .lede {
+    font-size: 17px;
+    color: var(--ink-soft);
+    max-width: 56ch;
+    margin: 0 0 48px;
+    text-wrap: pretty;
+  }
+
+  h2 {
+    font-family: "Archivo", system-ui, sans-serif;
+    font-weight: 700;
+    font-size: 1.5rem;
+    letter-spacing: -0.005em;
+    margin: 0 0 4px;
+  }
+  .section-tag {
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 8px;
+  }
+  .section-sub {
+    color: var(--ash);
+    font-size: 14px;
+    margin: 0 0 24px;
+  }
+
+  section.block {
+    padding-block: 40px;
+    border-top: 1px solid var(--line);
+  }
+  section.block:first-of-type { border-top: none; padding-top: 0; }
+
+  ol.steps {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  ol.steps li {
+    display: grid;
+    grid-template-columns: 32px 1fr;
+    gap: 14px;
+    align-items: start;
+  }
+  ol.steps .num {
+    width: 32px;
+    height: 32px;
+    border-radius: 999px;
+    background: var(--surface);
+    border: 1px solid var(--line-strong);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "Archivo", sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--ink);
+  }
+  ol.steps p { margin: 0; padding-top: 4px; color: var(--ink-soft); }
+  ol.steps strong { color: var(--ink); }
+
+  kbd.ui {
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 0.92em;
+    font-weight: 600;
+    color: var(--ink);
+    background: var(--surface-2);
+    border: 1px solid var(--line-strong);
+    border-radius: 5px;
+    padding: 0.1em 0.5em;
+  }
+
+  .field-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 14px 0 0 46px;
+  }
+  .field-list span {
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 5px 12px;
+  }
+
+  .callout {
+    margin-top: 22px;
+    border-radius: 10px;
+    padding: 16px 18px;
+    font-size: 14.5px;
+    line-height: 1.55;
+  }
+  .callout.warn {
+    background: var(--warn-bg);
+    border: 1px solid var(--warn-line);
+    color: var(--warn-ink);
+  }
+  .callout.warn strong { color: var(--warn-ink); }
+  .callout.tip {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: var(--ink-soft);
+  }
+  .callout.tip strong { color: var(--ink); }
+
+  .foot {
+    margin-top: 56px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+    font-size: 13px;
+    color: var(--ash);
+  }
+  .foot a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+
+  @media (max-width: 480px) {
+    .field-list { margin-left: 0; }
+  }
+</style>
+
+<div class="wrap">
+  <div class="kicker">
+    <svg viewBox="0 0 32 32" fill="none"><rect width="32" height="32" rx="7" fill="currentColor" style="color:var(--ink); opacity:0.08"/><path d="M17 3 L8 18 L14.5 18 L13 29 L25 13 L18 13 Z" fill="var(--accent)"/></svg>
+    <span>Gymkoç</span>
+  </div>
+
+  <h1>Salonunu kaydet, ekibini kur.</h1>
+  <p class="lede">
+    Bu rehber iki şeyi anlatır: gymkoc'ta yeni bir salon (şube) nasıl kaydedilir, ve o salona ilk PT hesabı nasıl
+    eklenir. İkisi de beş dakikadan kısa sürer.
+  </p>
+
+  <section class="block">
+    <p class="section-tag">Birinci adım</p>
+    <h2>Salonunu kaydet</h2>
+    <p class="section-sub">Kendi markanla, kendi yönetim panelin — tek seferlik kurulum.</p>
+
+    <ol class="steps">
+      <li>
+        <span class="num">1</span>
+        <p><strong>gymkoc.com</strong>'a git ve <kbd class="ui">Salonunu oluştur</kbd> butonuna bas.</p>
+      </li>
+      <li>
+        <span class="num">2</span>
+        <p>Açılan formu doldur:</p>
+      </li>
+    </ol>
+    <div class="field-list">
+      <span>Logo (opsiyonel)</span>
+      <span>Salon adı</span>
+      <span>Marka rengi</span>
+      <span>Ad Soyad</span>
+      <span>E-posta</span>
+      <span>Şifre</span>
+    </div>
+
+    <ol class="steps" style="margin-top: 18px;">
+      <li>
+        <span class="num">3</span>
+        <p>
+          <kbd class="ui">Salonu oluştur</kbd>'a bas. Salonun otomatik olarak kendi adresine
+          (<em>salonadin.gymkoc.com</em>) taşınır ve doğrudan takvim ekranına düşersin — e-posta onayı ya da ayrı bir
+          giriş adımı yok.
+        </p>
+      </li>
+    </ol>
+
+    <div class="callout tip">
+      <strong>Not:</strong> Seçtiğin salon adı, otomatik olarak adresini de belirler (örn. "Fitness Farm" →
+      <em>fitnessfarm.gymkoc.com</em>). Aynı isim daha önce alınmışsa sonuna otomatik bir sayı eklenir. Marka
+      rengini ve logonu istediğin zaman <kbd class="ui">Ayarlar</kbd>'dan değiştirebilirsin.
+    </div>
+  </section>
+
+  <section class="block">
+    <p class="section-tag">İkinci adım</p>
+    <h2>İlk PT'ni ekle</h2>
+    <p class="section-sub">Salonun hazır olunca sırada ekibini panele davet etmek var.</p>
+
+    <ol class="steps">
+      <li>
+        <span class="num">1</span>
+        <p>Sol menüden <strong>Ekip → PT'ler</strong>'e gir, <kbd class="ui">PT ekle</kbd>'ye bas.</p>
+      </li>
+      <li>
+        <span class="num">2</span>
+        <p>Ad soyad, e-posta ve bir geçici şifre gir (otomatik önerilen şifreyi kullanabilir ya da kendin
+        yazabilirsin), birden fazla şuben varsa hangisine ait olduğunu seç.</p>
+      </li>
+      <li>
+        <span class="num">3</span>
+        <p><kbd class="ui">Hesap oluştur</kbd>'a bas. Giriş bilgileri ekranda görünür.</p>
+      </li>
+    </ol>
+
+    <div class="callout warn">
+      <strong>Şifreyi şimdi kopyala.</strong> Bu geçici şifre yalnızca bir kez, bu ekranda gösterilir — kapattıktan
+      sonra bir daha görüntülenemez. Panel seni kopyalamadan çıkmaman için <kbd class="ui">Tamam</kbd> butonunu
+      kopyalayana kadar kilitli tutar; yine de ekrandan ayrılmadan önce "E-posta ve şifreyi kopyala"ya basıp
+      bilgileri PT'ye ilet.
+    </div>
+
+    <div class="callout tip">
+      <strong>Şifreyi kaybettiyseniz de sorun değil.</strong> PT, kendi salonunun giriş ekranında
+      (<em>salonadin.gymkoc.com</em>) <kbd class="ui">Şifremi unuttum</kbd>'a basıp e-postasına gelen bağlantıyla
+      kendi başına yeni bir şifre belirleyebilir. Geçici şifreyi kimsenin manuel olarak hatırlamasına gerek yok —
+      bu, ilk giriş için bir kısayoldan ibaret.
+    </div>
+  </section>
+
+  <section class="block">
+    <p class="section-tag">Sonrası</p>
+    <h2>Sırada ne var</h2>
+    <ol class="steps">
+      <li>
+        <span class="num">1</span>
+        <p><strong>Ayarlar</strong>'dan şubenin adresini ve bir saatte kaç ders girilebileceğini (kapasite) salonunun
+        büyüklüğüne göre ayarla.</p>
+      </li>
+      <li>
+        <span class="num">2</span>
+        <p><strong>Ayarlar → İdman türleri</strong>'nden Boks, Kickbox gibi kategoriler tanımla — raporlarda işine
+        yarayacak.</p>
+      </li>
+      <li>
+        <span class="num">3</span>
+        <p>Paneldeki <strong>Kullanım Kılavuzu</strong>'na (sol menü) göz at — takvim, ders girme ve raporlarla ilgili
+        günlük kullanım burada.</p>
+      </li>
+    </ol>
+  </section>
+
+  <p class="foot">
+    Bir sorunla karşılaşırsan <a href="mailto:emre.korkmaz2407@gmail.com">emre.korkmaz2407@gmail.com</a> adresine yaz.
+  </p>
+</div>

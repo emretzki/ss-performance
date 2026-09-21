@@ -742,7 +742,10 @@ export async function uploadAvatar(profileId: string, file: File): Promise<strin
     if (uploadError) throw uploadError;
     const { data } = supabase.storage.from("avatars").getPublicUrl(path);
     const url = `${data.publicUrl}?t=${Date.now()}`;
-    const { error: profileError } = await supabase.from("profiles").update({ avatar_url: url }).eq("id", profileId);
+    // update_own_avatar_url, not a direct table write: profiles_write only lets
+    // owner/super_admin write profiles, so a trainer uploading their own photo
+    // would otherwise fail RLS outright.
+    const { error: profileError } = await supabase.rpc("update_own_avatar_url", { new_avatar_url: url });
     if (profileError) throw profileError;
     return url;
   }
@@ -755,4 +758,32 @@ export async function uploadAvatar(profileId: string, file: File): Promise<strin
   });
   mockDB.updateProfileAvatar(profileId, dataUrl);
   return dataUrl;
+}
+
+export async function updateOwnProfile(profileId: string, fullName: string, phone: string | null): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase.rpc("update_own_profile", { new_full_name: fullName, new_phone: phone });
+    if (error) throw error;
+    return;
+  }
+  const patch: Partial<Pick<Profile, "fullName" | "phone">> = { phone: phone?.trim() || null };
+  if (fullName.trim()) patch.fullName = fullName.trim();
+  mockDB.updateProfileFields(profileId, patch);
+}
+
+export async function updateOwnPassword(newPassword: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) throw error;
+    return;
+  }
+  // No real auth in mock mode — nothing to update against.
+}
+
+export async function updateOwnEmail(newEmail: string): Promise<void> {
+  if (!(isSupabaseConfigured && supabase)) {
+    throw new Error("E-posta değişikliği yalnızca gerçek hesaplarda desteklenir.");
+  }
+  const { error } = await supabase.auth.updateUser({ email: newEmail });
+  if (error) throw error;
 }

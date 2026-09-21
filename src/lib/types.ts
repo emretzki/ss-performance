@@ -28,6 +28,8 @@ export interface Profile {
   phone: string | null;
   avatarColor: string;
   avatarUrl?: string | null;
+  /** From auth.users, real mode only — not stored on profiles and not present in mock mode. */
+  email?: string | null;
 }
 
 export interface Trainer extends Profile {
