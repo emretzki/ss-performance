@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>gymkoc — spor salonları için yönetim paneli</title>
+<meta name="description" content="Antrenörler dersini saniyeler içinde girer, sen her şubeyi tek ekrandan izlersin.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23101830'/><path d='M9 20 L15 8 L14 15 L23 15 L14 26 L15 18 Z' fill='%23B8F028'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="scrollcraft.css">
+<style>
+  :root {
+    --sc-canvas:     #101830;
+    --sc-surface:    #172140;
+    --sc-ink:        #F2F5EF;
+    --sc-ink-soft:   #93A0BC;
+    --sc-accent:     #B8F028;
+    --sc-accent-ink: #101830;
+    --sc-font-display: "Archivo", system-ui, sans-serif;
+    --sc-font-text:    "Space Grotesk", system-ui, sans-serif;
+
+    --gk-navy-deep: #0A1122;
+    --gk-slate: #384858;
+  }
+
+  /* ---------------------------------------------------------------- hero */
+  .gk-hero {
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: var(--sc-gutter);
+    background: var(--sc-canvas);
+    position: relative;
+    overflow: hidden;
+  }
+  .gk-hero::after {
+    content: "";
+    position: absolute;
+    inset: auto -10% -30% auto;
+    width: 60vw;
+    height: 60vw;
+    background: radial-gradient(circle, rgba(184,240,40,0.10), transparent 68%);
+    pointer-events: none;
+  }
+  .gk-hero__mark {
+    display: flex;
+    align-items: center;
+    gap: var(--sc-3);
+    margin-bottom: var(--sc-8);
+  }
+  .gk-hero__bolt { width: 28px; height: 28px; flex: none; }
+  .gk-hero__mark span {
+    font-family: var(--sc-font-text);
+    font-size: 0.8125rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--sc-ink-soft);
+  }
+  .gk-hero h1 {
+    font-family: var(--sc-font-display);
+    font-weight: 800;
+    font-size: clamp(3.2rem, 11vw, 8.5rem);
+    line-height: 0.92;
+    letter-spacing: -0.02em;
+    margin: 0 0 var(--sc-6);
+    max-width: 20ch;
+    text-wrap: balance;
+  }
+  .gk-hero h1 em {
+    font-style: normal;
+    color: var(--sc-accent);
+  }
+  .gk-hero__sub {
+    max-width: 46ch;
+    font-size: clamp(1.05rem, 2vw, 1.35rem);
+    line-height: 1.5;
+    color: var(--sc-ink-soft);
+    margin: 0 0 var(--sc-9);
+  }
+  .gk-hero__actions {
+    display: flex;
+    gap: var(--sc-6);
+    align-items: baseline;
+    flex-wrap: wrap;
+  }
+  .gk-link {
+    font-family: var(--sc-font-text);
+    font-weight: 500;
+    font-size: 1rem;
+    color: var(--sc-ink);
+    text-decoration: underline;
+    text-decoration-color: var(--sc-ink-soft);
+    text-underline-offset: 5px;
+    transition: color 160ms var(--sc-ease-out), text-decoration-color 160ms var(--sc-ease-out);
+  }
+  .gk-link:hover { color: var(--sc-accent); text-decoration-color: var(--sc-accent); }
+  .gk-link--primary {
+    color: var(--sc-accent-ink);
+    background: var(--sc-accent);
+    text-decoration: none;
+    padding: 0.85em 1.5em;
+    border-radius: 999px;
+    font-weight: 600;
+  }
+  .gk-link--primary:hover { color: var(--sc-accent-ink); filter: brightness(1.08); }
+
+  /* --------------------------------------------------------------- folio */
+  .gk-folio {
+    position: fixed;
+    left: var(--sc-gutter);
+    bottom: var(--sc-4);
+    z-index: 5;
+    font-family: var(--sc-font-text);
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--sc-ink-soft);
+    opacity: 0;
+    transition: opacity 260ms var(--sc-ease-out);
+    pointer-events: none;
+  }
+  .gk-folio.is-visible { opacity: 0.85; }
+
+  /* ----------------------------------------------------------- chapters */
+  .gk-chapter { background: var(--sc-canvas); }
+  .gk-chapter--alt { background: var(--gk-navy-deep); }
+
+  .gk-spread {
+    display: grid;
+    gap: var(--sc-9);
+    align-items: center;
+  }
+  .gk-spread--split {
+    grid-template-columns: 1.1fr 0.9fr;
+  }
+  .gk-spread--split.gk-spread--reverse { grid-template-columns: 0.9fr 1.1fr; }
+  .gk-spread--reverse .gk-spread__media { order: 2; }
+  .gk-spread--reverse .gk-spread__text { order: 1; }
+
+  @media (max-width: 860px) {
+    .gk-spread--split, .gk-spread--split.gk-spread--reverse { grid-template-columns: 1fr; }
+    .gk-spread--reverse .gk-spread__media,
+    .gk-spread--reverse .gk-spread__text { order: initial; }
+  }
+
+  .gk-eyebrow {
+    font-family: var(--sc-font-text);
+    font-size: 0.75rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--sc-accent);
+    margin: 0 0 var(--sc-4);
+    display: block;
+  }
+  .gk-h2 {
+    font-family: var(--sc-font-display);
+    font-weight: 800;
+    font-size: clamp(2rem, 4.6vw, 3.6rem);
+    line-height: 1.02;
+    letter-spacing: -0.01em;
+    margin: 0 0 var(--sc-5);
+    text-wrap: balance;
+  }
+  .gk-spread__media figure { margin: 0; position: relative; border-radius: 4px; overflow: hidden; }
+  .gk-spread__media img { display: block; width: 100%; height: auto; }
+  .gk-caption {
+    font-family: var(--sc-font-text);
+    font-size: 0.8125rem;
+    color: var(--sc-ink-soft);
+    margin-top: var(--sc-3);
+    padding-top: var(--sc-3);
+    border-top: 1px solid rgba(147,160,188,0.22);
+  }
+
+  /* ------------------------------------------------------- chapter II pin */
+  .gk-swap-stage {
+    position: relative;
+    aspect-ratio: 3 / 4;
+    max-width: 480px;
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--gk-navy-deep);
+    box-shadow: 0 24px 60px -20px rgba(0,0,0,0.6);
+  }
+  .gk-swap-stage img,
+  .gk-swap-stage .gk-panel {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .gk-swap-stage img { object-fit: cover; opacity: 1; transition: none; }
+  .gk-swap-stage.is-swapped img { opacity: 0; }
+
+  .gk-panel {
+    background: var(--sc-surface);
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    opacity: 0;
+    transition: none;
+  }
+  .gk-swap-stage.is-swapped .gk-panel { opacity: 1; }
+  .gk-panel__head { display: flex; align-items: center; justify-content: space-between; }
+  .gk-panel__head span:first-child { font-family: var(--sc-font-text); font-weight: 600; font-size: 0.9rem; color: var(--sc-ink); }
+  .gk-panel__head span:last-child { font-family: var(--sc-font-text); font-size: 0.75rem; color: var(--sc-ink-soft); }
+  .gk-slot {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(147,160,188,0.18);
+    border-radius: 3px;
+    padding: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+  .gk-slot__time { font-family: var(--sc-font-text); font-size: 0.8rem; color: var(--sc-ink-soft); width: 3.4rem; flex: none; }
+  .gk-chips { display: flex; gap: 0.3rem; }
+  .gk-chip {
+    width: 26px; height: 26px; border-radius: 999px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--sc-font-text); font-size: 0.65rem; font-weight: 600;
+    color: var(--sc-canvas);
+    transform: scale(0.8); opacity: 0;
+    transition: transform 320ms var(--sc-ease-out), opacity 320ms var(--sc-ease-out);
+  }
+  .gk-swap-stage.is-swapped .gk-chip { transform: scale(1); opacity: 1; }
+  .gk-swap-stage.is-swapped .gk-chip:nth-child(2) { transition-delay: 90ms; }
+  .gk-chip--a { background: var(--sc-accent); }
+  .gk-chip--b { background: #7A5C74; }
+  .gk-chip--fill {
+    width: 26px; height: 26px; border-radius: 999px; border: 1.5px dashed rgba(147,160,188,0.4);
+  }
+  .gk-panel__note {
+    margin-top: auto;
+    font-family: var(--sc-font-text);
+    font-size: 0.75rem;
+    color: var(--sc-accent);
+    opacity: 0;
+    transition: opacity 260ms var(--sc-ease-out) 420ms;
+  }
+  .gk-swap-stage.is-swapped .gk-panel__note { opacity: 1; }
+
+  /* --------------------------------------------------------------- close */
+  .gk-close {
+    background: var(--gk-navy-deep);
+    min-height: 92dvh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: var(--sc-gutter);
+  }
+  .gk-close__mark { display: flex; align-items: center; gap: var(--sc-3); margin-bottom: var(--sc-8); }
+  .gk-close__mark svg { width: 22px; height: 22px; }
+  .gk-close__mark span { font-family: var(--sc-font-text); font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--sc-ink-soft); }
+  .gk-close h2 {
+    font-family: var(--sc-font-display);
+    font-weight: 800;
+    font-size: clamp(1.8rem, 4vw, 2.6rem);
+    line-height: 1.25;
+    max-width: 26ch;
+    margin: 0 0 var(--sc-9);
+    text-wrap: balance;
+  }
+  .gk-close h2 a { color: var(--sc-accent); text-decoration-color: rgba(184,240,40,0.4); }
+  .gk-close h2 a:hover { text-decoration-color: var(--sc-accent); }
+  .gk-close__foot {
+    font-family: var(--sc-font-text);
+    font-size: 0.75rem;
+    color: var(--sc-ink-soft);
+    padding-top: var(--sc-6);
+    border-top: 1px solid rgba(147,160,188,0.18);
+  }
+</style>
+</head>
+<body>
+
+<span data-sc-progress></span>
+<div class="sc-grain" aria-hidden="true"></div>
+<div class="gk-folio" data-gk-folio>I — Antrenman</div>
+
+<main id="top">
+
+  <!-- Title page: chaptered editorial hero. No media above the fold. -->
+  <section class="gk-hero">
+    <div class="gk-hero__mark">
+      <svg class="gk-hero__bolt" viewBox="0 0 32 32" fill="none"><path d="M17 3 L8 18 L14.5 18 L13 29 L25 13 L18 13 Z" fill="#B8F028"/></svg>
+      <span>Gymkoç</span>
+    </div>
+    <h1>Salonun<br><em>tek panelde</em>.</h1>
+    <p class="gk-hero__sub">Antrenörler dersini sahada, telefonlarından saniyeler içinde girer. Sen her şubeyi, her PT'yi tek ekrandan izlersin.</p>
+    <div class="gk-hero__actions">
+      <a class="gk-link gk-link--primary" href="/signup">Salonunu oluştur</a>
+      <a class="gk-link" href="/">Giriş yap</a>
+    </div>
+  </section>
+
+  <!-- Chapter I — Antrenman: flow + reveal, asymmetric spread -->
+  <section class="sc-section gk-chapter" data-sc-act="flow" data-gk-chapter="I — Antrenman">
+    <div class="sc-wrap gk-spread gk-spread--split">
+      <div class="gk-spread__text sc-stack" data-sc-in data-sc-stagger="70">
+        <span class="gk-eyebrow">I — Antrenman</span>
+        <h2 class="gk-h2">Enerji sahada başlar.</h2>
+        <p class="sc-body">Bire bir dersler PT'nin elinde. Kimin, ne zaman, kiminle çalıştığı bir bakışta belli — salon sahibi uzaktan, gerçek zamanlı izler.</p>
+      </div>
+      <div class="gk-spread__media">
+        <figure data-sc-reveal="up" data-sc-reveal-at="0.1 0.5">
+          <img src="assets/01-training.webp" width="2736" height="1520" alt="Bir sporcu, zil ağırlığı ile hareketin zirvesinde, karanlık bir salonda lime yeşili ışıkla aydınlanmış.">
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- Chapter II — Ekipman: PIN, the peak. Quiet macro, then the signature
+       object-to-interface hard cut. -->
+  <section class="gk-chapter gk-chapter--alt" data-sc-act="pin" data-sc-span="3.4">
+    <div data-sc-stage class="sc-wrap gk-spread gk-spread--split gk-spread--reverse">
+      <div class="gk-spread__text" data-sc-cue="0 0.3 0">
+        <span class="gk-eyebrow">II — Ekipman</span>
+        <h2 class="gk-h2" data-sc-kinetic="lines">Her ekipmanın bir amacı var.</h2>
+        <p class="sc-body" data-sc-cue="0.05 0.4 0">Zil ağırlık. Beton zemin. Ve az sonra göreceğin gibi, arkasında gerçekten çalışan bir sistem.</p>
+      </div>
+      <div class="gk-spread__media">
+        <div class="gk-swap-stage" data-gk-object-swap="0.5">
+          <img src="assets/02-equipment.webp" width="1776" height="2352" alt="Beton zeminde tek bir mat siyah zil ağırlık, lime yeşili ışıkla vurgulanmış.">
+          <div class="gk-panel">
+            <div class="gk-panel__head">
+              <span>09:00</span>
+              <span>3/3 · Dolu</span>
+            </div>
+            <div class="gk-slot">
+              <span class="gk-slot__time">09:00</span>
+              <div class="gk-chips">
+                <span class="gk-chip gk-chip--a">E</span>
+                <span class="gk-chip gk-chip--b">D</span>
+                <span class="gk-chip gk-chip--fill"></span>
+              </div>
+            </div>
+            <div class="gk-slot">
+              <span class="gk-slot__time">10:00</span>
+              <div class="gk-chips">
+                <span class="gk-chip gk-chip--a">E</span>
+              </div>
+            </div>
+            <p class="gk-panel__note">Gerçek ürün arayüzü — mockup değil.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Chapter III — Ekip: flow + reveal(iris), the human, quiet after the peak -->
+  <section class="sc-section gk-chapter" data-sc-act="flow" data-gk-chapter="III — Ekip">
+    <div class="sc-wrap gk-spread gk-spread--split">
+      <div class="gk-spread__text sc-stack" data-sc-in data-sc-stagger="70">
+        <span class="gk-eyebrow">III — Ekip</span>
+        <h2 class="gk-h2">Arkasında gerçek insanlar var.</h2>
+        <p class="sc-body">Panel, PT'lerin işini kolaylaştırmak için var: raporları, saatleri, kapasiteyi tek yerde tutar — kağıt takvime, WhatsApp mesajına gerek kalmaz.</p>
+      </div>
+      <div class="gk-spread__media">
+        <figure data-sc-reveal="iris" data-sc-reveal-at="0.12 0.55">
+          <img src="assets/03-trainer.webp" width="1776" height="2352" alt="Bir antrenör, kollar kavuşturulmuş, loş bir salon koridorunda kameraya doğrudan bakıyor.">
+        </figure>
+        <p class="gk-caption">Antrenör, günün tüm derslerini tek ekrandan yönetiyor.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Close — colophon. Running-text CTA, not a button island. -->
+  <section id="join" class="gk-close" data-sc-act="pin" data-sc-span="1.15" data-sc-spotlight>
+    <div data-sc-stage>
+      <div class="gk-close__mark">
+        <svg viewBox="0 0 32 32" fill="none"><path d="M17 3 L8 18 L14.5 18 L13 29 L25 13 L18 13 Z" fill="#B8F028"/></svg>
+        <span>Gymkoç</span>
+      </div>
+      <h2 data-sc-cue="0.06" data-sc-kinetic="lines">
+        <a href="/signup" class="gk-link gk-link--inline">Kendi salonunu şimdi oluştur</a>, ya da zaten bir hesabın varsa <a href="/" class="gk-link gk-link--inline">giriş yap</a>.
+      </h2>
+      <p class="gk-close__foot">gymkoc — spor salonları için yönetim paneli. Her salon kendi markası, kendi ekibi, kendi verisiyle çalışır.</p>
+    </div>
+  </section>
+
+</main>
+
+<script src="scrollcraft.js"></script>
+<script>
+  ScrollCraft.mount(document.body);
+
+  // ---- Signature move: object-to-interface hard cut -----------------
+  // Bespoke to this page. Reads the pinned act's own --sc-p (published by
+  // the engine on the act element) and hard-cuts the swap stage's photo to
+  // the live product panel once progress crosses the threshold, with a
+  // little hysteresis so it doesn't flicker sitting on the exact boundary.
+  (function () {
+    var stage = document.querySelector('[data-gk-object-swap]');
+    if (!stage) return;
+    var act = stage.closest('[data-sc-act]');
+    if (!act) return;
+    var threshold = parseFloat(stage.getAttribute('data-gk-object-swap')) || 0.5;
+    var band = 0.02;
+    var swapped = false;
+
+    function tick() {
+      var p = parseFloat(getComputedStyle(act).getPropertyValue('--sc-p')) || 0;
+      if (!swapped && p > threshold + band) {
+        swapped = true;
+        stage.classList.add('is-swapped');
+      } else if (swapped && p < threshold - band) {
+        swapped = false;
+        stage.classList.remove('is-swapped');
+      }
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  })();
+
+  // ---- Folio: updates as chapters pass -------------------------------
+  (function () {
+    var folio = document.querySelector('[data-gk-folio]');
+    var chapters = document.querySelectorAll('[data-gk-chapter]');
+    if (!folio || !chapters.length) return;
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) {
+          folio.textContent = e.target.getAttribute('data-gk-chapter');
+          folio.classList.add('is-visible');
+        }
+      });
+    }, { rootMargin: '-45% 0px -45% 0px' });
+    chapters.forEach(function (c) { io.observe(c); });
+
+    var hero = document.querySelector('.gk-hero');
+    var closeEl = document.querySelector('.gk-close');
+    [hero, closeEl].forEach(function (el) {
+      if (!el) return;
+      var io2 = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (e.isIntersecting) folio.classList.remove('is-visible');
+        });
+      }, { threshold: 0.6 });
+      io2.observe(el);
+    });
+  })();
+</script>
+</body>
+</html>
