@@ -28,3 +28,6 @@ dist-ssr
 
 # scroll-craft verification screenshots (large, regenerable via shoot.mjs)
 scrollcraft/builds/*/lab/
+
+# Supabase CLI local cache
+supabase/.temp/

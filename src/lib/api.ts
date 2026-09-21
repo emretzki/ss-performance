@@ -16,6 +16,23 @@ import {
   type WorkoutType,
 } from "./types";
 
+// supabase-js throws a generic "Edge Function returned a non-2xx status
+// code" for any function-level error response, discarding the JSON body the
+// function actually sent back. Read the real { error: "..." } message from
+// the underlying Response so the user sees why it failed, not just that it did.
+async function edgeFunctionErrorMessage(error: unknown, fallback: string): Promise<string> {
+  const context = (error as { context?: Response } | null)?.context;
+  if (context instanceof Response) {
+    try {
+      const body = await context.clone().json();
+      if (body && typeof body.error === "string") return body.error;
+    } catch {
+      // response wasn't JSON; fall through to the generic message below
+    }
+  }
+  return error instanceof Error ? error.message : fallback;
+}
+
 export class SlotFullError extends Error {
   nearestAvailable: string | null;
   constructor(nearestAvailable: string | null) {
@@ -173,7 +190,7 @@ export async function createOrganization(input: CreateOrganizationInput): Promis
     const { data, error } = await supabase.functions.invoke<{ userId: string; slug: string; error?: string }>("create-organization", {
       body: input,
     });
-    if (error) throw error;
+    if (error) throw new Error(await edgeFunctionErrorMessage(error, "Salon oluşturulamadı."));
     if (!data || data.error) throw new Error(data?.error ?? "Salon oluşturulamadı.");
     return { userId: data.userId, slug: data.slug };
   }
@@ -353,7 +370,7 @@ export async function createPersonWithRole(input: CreatePersonInput): Promise<Pr
         branchId: input.branchId,
       },
     });
-    if (error) throw error;
+    if (error) throw new Error(await edgeFunctionErrorMessage(error, "Kişi oluşturulamadı."));
     if (!data || data.error) throw new Error(data?.error ?? "Kişi oluşturulamadı.");
 
     return {
