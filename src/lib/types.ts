@@ -72,6 +72,35 @@ export interface Member {
    * when a non-cancelled session is logged against this member, credited
    * back on cancel. Reset to 0 whenever the package fields are (re)set. */
   packageSessionsUsed: number;
+  /** When the current package was paid for — revenue counts toward this
+   * month, not whichever month the sessions actually happen in (fees are
+   * collected in bulk up front, per the owner). Null if no package yet. */
+  packagePaidAt: string | null;
+}
+
+/** One payment event — created whenever a member's package is first set or
+ * renewed (never on a mere correction to the same package). This is what
+ * revenue reporting sums, not live session activity, so a later renewal can
+ * never rewrite an earlier month's ciro. */
+export interface Payment {
+  id: string;
+  memberId: string;
+  branchId: string;
+  amount: number;
+  packageName: string | null;
+  totalSessions: number | null;
+  paidAt: string; // date, YYYY-MM-DD
+  createdAt: string;
+}
+
+/** A standing monthly cost (kira, elektrik, vb.) the owner enters once and
+ * which applies every month going forward — not a per-month ledger entry. */
+export interface BranchExpense {
+  id: string;
+  branchId: string;
+  name: string;
+  amount: number;
+  createdAt: string;
 }
 
 export interface WorkoutType {

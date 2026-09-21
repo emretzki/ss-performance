@@ -4,7 +4,17 @@ import { Trash } from "@phosphor-icons/react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBranch } from "@/contexts/BranchContext";
 import { useOrganization } from "@/contexts/OrganizationContext";
-import { createWorkoutType, deleteWorkoutType, listWorkoutTypes, updateBranch, updateOrganization, uploadOrgLogo } from "@/lib/api";
+import {
+  createBranchExpense,
+  createWorkoutType,
+  deleteBranchExpense,
+  deleteWorkoutType,
+  listBranchExpenses,
+  listWorkoutTypes,
+  updateBranch,
+  updateOrganization,
+  uploadOrgLogo,
+} from "@/lib/api";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 
@@ -33,6 +43,10 @@ export function SettingsScreen() {
   const [newTypeName, setNewTypeName] = useState("");
   const [newTypeColor, setNewTypeColor] = useState("#8A8478");
 
+  const [newExpenseName, setNewExpenseName] = useState("");
+  const [newExpenseAmount, setNewExpenseAmount] = useState("");
+  const isOwner = profile?.role === "owner" || profile?.role === "super_admin";
+
   useEffect(() => {
     if (organization) {
       setOrgName(organization.name);
@@ -52,6 +66,12 @@ export function SettingsScreen() {
     queryKey: ["workout-types", profile?.organizationId],
     queryFn: () => listWorkoutTypes(profile!.organizationId),
     enabled: Boolean(profile?.organizationId),
+  });
+
+  const { data: branchExpenses = [] } = useQuery({
+    queryKey: ["branch-expenses", activeBranchId],
+    queryFn: () => listBranchExpenses(activeBranchId as string),
+    enabled: Boolean(activeBranchId) && isOwner,
   });
 
   if (!organization) return <EmptyState message="Ayarlar yükleniyor." />;
@@ -98,6 +118,20 @@ export function SettingsScreen() {
   async function handleDeleteType(id: string) {
     await deleteWorkoutType(id);
     qc.invalidateQueries({ queryKey: ["workout-types", profile?.organizationId] });
+  }
+
+  async function handleAddExpense() {
+    const amount = Number(newExpenseAmount);
+    if (!newExpenseName.trim() || !amount || !activeBranchId) return;
+    await createBranchExpense({ branchId: activeBranchId, name: newExpenseName.trim(), amount });
+    setNewExpenseName("");
+    setNewExpenseAmount("");
+    qc.invalidateQueries({ queryKey: ["branch-expenses", activeBranchId] });
+  }
+
+  async function handleDeleteExpense(id: string) {
+    await deleteBranchExpense(id);
+    qc.invalidateQueries({ queryKey: ["branch-expenses", activeBranchId] });
   }
 
   return (
@@ -203,6 +237,51 @@ export function SettingsScreen() {
             </Button>
           </div>
         </section>
+
+        {isOwner && activeBranch && (
+          <section className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] p-4">
+            <p className="text-[13px] font-medium text-[var(--color-ink-soft)]">Giderler — {activeBranch.name}</p>
+            <p className="text-[12px] text-[var(--color-ash)]">
+              Kira, elektrik gibi düzenli aylık giderler. Her ay otomatik olarak salon karından düşülür.
+            </p>
+
+            <div className="flex flex-col divide-y divide-[var(--color-line)] rounded-[var(--radius-md)] border border-[var(--color-line)]">
+              {branchExpenses.length === 0 ? (
+                <p className="px-3 py-2.5 text-[13px] text-[var(--color-ash)]">Henüz gider eklenmedi.</p>
+              ) : (
+                branchExpenses.map((exp) => (
+                  <div key={exp.id} className="flex items-center gap-3 px-3 py-2.5">
+                    <span className="flex-1 text-[14px] text-[var(--color-ink)]">{exp.name}</span>
+                    <span className="text-[13px] tabular-nums text-[var(--color-ink-soft)]">{Math.round(exp.amount).toLocaleString("tr-TR")} TL</span>
+                    <button onClick={() => handleDeleteExpense(exp.id)} className="text-[var(--color-ash)] hover:text-[var(--color-danger)]" aria-label="Sil">
+                      <Trash size={16} />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="flex gap-2">
+              <input
+                value={newExpenseName}
+                onChange={(e) => setNewExpenseName(e.target.value)}
+                placeholder="Gider adı (örn. Kira)"
+                className={inputClass}
+              />
+              <input
+                type="number"
+                min={0}
+                value={newExpenseAmount}
+                onChange={(e) => setNewExpenseAmount(e.target.value)}
+                placeholder="Aylık TL"
+                className={`${inputClass} w-32 shrink-0`}
+              />
+              <Button onClick={handleAddExpense} className="shrink-0">
+                Ekle
+              </Button>
+            </div>
+          </section>
+        )}
       </div>
     </div>
   );

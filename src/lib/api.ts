@@ -6,9 +6,11 @@ import {
   LIVE_SESSION_AUTO_END_MIN,
   PT_BADGE_COLORS,
   type Branch,
+  type BranchExpense,
   type GymSession,
   type Member,
   type Organization,
+  type Payment,
   type Profile,
   type PublicOrgBranding,
   type Role,
@@ -444,6 +446,7 @@ function mapMember(r: Record<string, unknown>): Member {
     packageTotalPrice: (r.package_total_price as number | null) ?? null,
     packageTotalSessions: (r.package_total_sessions as number | null) ?? null,
     packageSessionsUsed: (r.package_sessions_used as number | undefined) ?? 0,
+    packagePaidAt: (r.package_paid_at as string | null) ?? null,
   };
 }
 
@@ -477,6 +480,7 @@ export async function createMember(input: { branchId: string; fullName: string; 
     packageTotalPrice: null,
     packageTotalSessions: null,
     packageSessionsUsed: 0,
+    packagePaidAt: null,
   };
   mockDB.addMember(member);
   return member;
@@ -489,8 +493,14 @@ export interface UpdateMemberInput {
   packageName?: string | null;
   packageTotalPrice?: number | null;
   packageTotalSessions?: number | null;
-  /** Only set when explicitly renewing a package — never as a side effect of
-   * an unrelated field edit. */
+  /** Date the (new or renewed) package was paid for. Only meaningful together
+   * with resetPackageUsage — that's the only time a payment row is created. */
+  packagePaidAt?: string | null;
+  /** Only set when explicitly assigning a new package or renewing — never as
+   * a side effect of an unrelated field edit. Creates a payment record (ciro
+   * is cash-basis: it counts toward whatever month this date falls in, not
+   * whenever the package's sessions end up happening) and resets the usage
+   * counter to 0. */
   resetPackageUsage?: boolean;
 }
 
@@ -503,10 +513,25 @@ export async function updateMember(id: string, input: UpdateMemberInput): Promis
     if (input.packageName !== undefined) patch.package_name = input.packageName;
     if (input.packageTotalPrice !== undefined) patch.package_total_price = input.packageTotalPrice;
     if (input.packageTotalSessions !== undefined) patch.package_total_sessions = input.packageTotalSessions;
-    if (input.resetPackageUsage) patch.package_sessions_used = 0;
+    if (input.resetPackageUsage) {
+      patch.package_sessions_used = 0;
+      patch.package_paid_at = input.packagePaidAt ?? new Date().toISOString().slice(0, 10);
+    }
     const { data, error } = await supabase.from("members").update(patch).eq("id", id).select().single();
     if (error) throw error;
-    return mapMember(data);
+    const updated = mapMember(data);
+    if (input.resetPackageUsage && updated.packageTotalPrice) {
+      const { error: payError } = await supabase.from("payments").insert({
+        member_id: id,
+        branch_id: updated.branchId,
+        amount: updated.packageTotalPrice,
+        package_name: updated.packageName,
+        total_sessions: updated.packageTotalSessions,
+        paid_at: updated.packagePaidAt,
+      });
+      if (payError) throw payError;
+    }
+    return updated;
   }
   mockDB.updateMember(id, {
     ...(input.fullName !== undefined && { fullName: input.fullName }),
@@ -515,11 +540,96 @@ export async function updateMember(id: string, input: UpdateMemberInput): Promis
     ...(input.packageName !== undefined && { packageName: input.packageName }),
     ...(input.packageTotalPrice !== undefined && { packageTotalPrice: input.packageTotalPrice }),
     ...(input.packageTotalSessions !== undefined && { packageTotalSessions: input.packageTotalSessions }),
-    ...(input.resetPackageUsage && { packageSessionsUsed: 0 }),
+    ...(input.resetPackageUsage && {
+      packageSessionsUsed: 0,
+      packagePaidAt: input.packagePaidAt ?? new Date().toISOString().slice(0, 10),
+    }),
   });
   const updated = mockDB.get().members.find((m) => m.id === id);
   if (!updated) throw new Error("Üye bulunamadı.");
+  if (input.resetPackageUsage && updated.packageTotalPrice) {
+    mockDB.addPayment({
+      id: `pay${Date.now()}`,
+      memberId: id,
+      branchId: updated.branchId,
+      amount: updated.packageTotalPrice,
+      packageName: updated.packageName,
+      totalSessions: updated.packageTotalSessions,
+      paidAt: updated.packagePaidAt ?? new Date().toISOString().slice(0, 10),
+      createdAt: new Date().toISOString(),
+    });
+  }
   return updated;
+}
+
+// ---------------------------------------------------------------------------
+// Payments & branch expenses (revenue reporting)
+// ---------------------------------------------------------------------------
+
+function mapPayment(r: Record<string, unknown>): Payment {
+  return {
+    id: r.id as string,
+    memberId: r.member_id as string,
+    branchId: r.branch_id as string,
+    amount: r.amount as number,
+    packageName: (r.package_name as string | null) ?? null,
+    totalSessions: (r.total_sessions as number | null) ?? null,
+    paidAt: r.paid_at as string,
+    createdAt: r.created_at as string,
+  };
+}
+
+export async function listPayments(branchId: string, from: Date, to: Date): Promise<Payment[]> {
+  const fromStr = from.toISOString().slice(0, 10);
+  const toStr = to.toISOString().slice(0, 10);
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from("payments")
+      .select("*")
+      .eq("branch_id", branchId)
+      .gte("paid_at", fromStr)
+      .lt("paid_at", toStr);
+    if (error) throw error;
+    return data.map(mapPayment);
+  }
+  return mockDB.get().payments.filter((p) => p.branchId === branchId && p.paidAt >= fromStr && p.paidAt < toStr);
+}
+
+function mapBranchExpense(r: Record<string, unknown>): BranchExpense {
+  return { id: r.id as string, branchId: r.branch_id as string, name: r.name as string, amount: r.amount as number, createdAt: r.created_at as string };
+}
+
+export async function listBranchExpenses(branchId: string): Promise<BranchExpense[]> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from("branch_expenses").select("*").eq("branch_id", branchId).order("created_at");
+    if (error) throw error;
+    return data.map(mapBranchExpense);
+  }
+  return mockDB.get().branchExpenses.filter((e) => e.branchId === branchId);
+}
+
+export async function createBranchExpense(input: { branchId: string; name: string; amount: number }): Promise<BranchExpense> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from("branch_expenses")
+      .insert({ branch_id: input.branchId, name: input.name, amount: input.amount })
+      .select()
+      .single();
+    if (error) throw error;
+    return mapBranchExpense(data);
+  }
+  const expense: BranchExpense = { id: `exp${Date.now()}`, branchId: input.branchId, name: input.name, amount: input.amount, createdAt: new Date().toISOString() };
+  mockDB.addBranchExpense(expense);
+  return expense;
+}
+
+export async function deleteBranchExpense(id: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase.from("branch_expenses").delete().eq("id", id);
+    if (error) throw error;
+    return;
+  }
+  mockDB.deleteBranchExpense(id);
 }
 
 // ---------------------------------------------------------------------------
@@ -811,60 +921,67 @@ export async function getTrainerStats(branchId: string, trainerId: string): Prom
 }
 
 export interface RevenueSummary {
-  /** Total realized revenue (ciro) in the window: sum of each counted
-   * session's member-package unit price. Sessions with no member or no
-   * package on that member contribute nothing — there's no price to attribute. */
+  /** Ciro: cash-basis, sum of payments whose paid_at falls in [from, to) —
+   * fees are collected in bulk up front, so a package counts toward the
+   * month it was PAID for, never the months its sessions happen to land in
+   * (even if they spill past the end of that month). */
   totalRevenue: number;
-  /** What stays with the gym: 100% of a branch owner's own sessions (exempt
-   * from commission) plus each PT's own (100% - commissionRate) share. */
+  /** Standing monthly costs (kira, vb.) entered in Ayarlar. */
+  totalExpenses: number;
+  /** Ciro − PT primi − Giderler. */
   ownerProfit: number;
-  /** Total owed to PTs across the window (sum of each session's
-   * unitPrice * commissionRate). */
+  /** Session-basis, on purpose, unlike ciro: a PT is paid for the lessons
+   * they actually gave this window, sum of each realized session's
+   * unitPrice * commissionRate. A branch owner's own sessions are exempt
+   * (0% — no commission is paid out on them at all). */
   commissionPayable: number;
-  byTrainer: { trainerId: string; revenue: number; commission: number }[];
+  byTrainer: { trainerId: string; sessionValue: number; commission: number }[];
 }
 
-/** Revenue/profit for a branch in [from, to). Built entirely from sessions +
- * members + trainers already fetched elsewhere — no schema of its own, and
- * therefore identical in real and mock mode for free. "Realized" mirrors
- * getTrainerStats' own definition: not cancelled, and already happened. */
+/** Revenue/profit for a branch in [from, to). Ciro comes from the payments
+ * ledger (cash-basis); commission still comes from sessions + members +
+ * trainers (session-basis) exactly as before — the two halves of this report
+ * deliberately use different bases, per how the business is actually run. */
 export async function getBranchRevenue(branchId: string, from: Date, to: Date): Promise<RevenueSummary> {
-  const [sessions, members, trainers] = await Promise.all([listSessions(branchId, from, to), listMembers(branchId), listTrainers(branchId)]);
+  const [sessions, members, trainers, payments, expenses] = await Promise.all([
+    listSessions(branchId, from, to),
+    listMembers(branchId),
+    listTrainers(branchId),
+    listPayments(branchId, from, to),
+    listBranchExpenses(branchId),
+  ]);
   const now = new Date();
   const memberById = new Map(members.map((m) => [m.id, m]));
   const trainerById = new Map(trainers.map((t) => [t.id, t]));
 
-  let totalRevenue = 0;
-  let ownerProfit = 0;
+  const totalRevenue = payments.reduce((sum, p) => sum + p.amount, 0);
+  const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+
   let commissionPayable = 0;
-  const byTrainerMap = new Map<string, { revenue: number; commission: number }>();
+  const byTrainerMap = new Map<string, { sessionValue: number; commission: number }>();
 
   for (const s of sessions) {
     if (s.status === "cancelled" || new Date(s.startsAt) > now) continue;
     const member = s.memberId ? memberById.get(s.memberId) : undefined;
     if (!member?.packageTotalPrice || !member.packageTotalSessions) continue;
 
-    const unitPrice = member.packageTotalPrice / member.packageTotalSessions;
-    totalRevenue += unitPrice;
-
     const trainer = trainerById.get(s.trainerId);
-    if (trainer?.role === "owner" || trainer?.role === "super_admin") {
-      ownerProfit += unitPrice;
-      continue;
-    }
+    if (trainer?.role === "owner" || trainer?.role === "super_admin") continue; // no commission, ever
+
+    const unitPrice = member.packageTotalPrice / member.packageTotalSessions;
     const rate = trainer?.commissionRate ?? 50;
     const commission = unitPrice * (rate / 100);
-    ownerProfit += unitPrice - commission;
     commissionPayable += commission;
-    const entry = byTrainerMap.get(s.trainerId) ?? { revenue: 0, commission: 0 };
-    entry.revenue += unitPrice;
+    const entry = byTrainerMap.get(s.trainerId) ?? { sessionValue: 0, commission: 0 };
+    entry.sessionValue += unitPrice;
     entry.commission += commission;
     byTrainerMap.set(s.trainerId, entry);
   }
 
   return {
     totalRevenue,
-    ownerProfit,
+    totalExpenses,
+    ownerProfit: totalRevenue - commissionPayable - totalExpenses,
     commissionPayable,
     byTrainer: [...byTrainerMap.entries()].map(([trainerId, v]) => ({ trainerId, ...v })),
   };

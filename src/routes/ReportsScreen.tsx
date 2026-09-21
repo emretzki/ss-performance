@@ -155,18 +155,25 @@ export function ReportsScreen() {
             {showBranchTotal && revenue && (
               <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] p-4">
                 <p className="mb-1 text-[13px] font-medium text-[var(--color-ink-soft)]">Ciro (bu ay)</p>
-                <p className="mb-4 text-[12px] text-[var(--color-ash)]">Üyelerin paket birim fiyatına göre, gerçekleşen (iptal edilmemiş, saati geçmiş) dersler.</p>
-                <div className="grid grid-cols-3 gap-3">
+                <p className="mb-4 text-[12px] text-[var(--color-ash)]">
+                  Ciro, paketin <strong>ödendiği</strong> aya yazılır (dersler sonraki aya sarksa bile). Salon karı = ciro − PT
+                  primi − giderler.
+                </p>
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                   <StatCard label="Toplam ciro" value={formatTL(revenue.totalRevenue)} />
-                  <StatCard label="Salon karı" value={formatTL(revenue.ownerProfit)} />
+                  <StatCard label="Giderler" value={formatTL(revenue.totalExpenses)} />
                   <StatCard label="PT primi" value={formatTL(revenue.commissionPayable)} />
+                  <StatCard label="Salon karı" value={formatTL(revenue.ownerProfit)} />
                 </div>
               </div>
             )}
 
             {!showBranchTotal && trainerRevenue && (
               <div className="grid grid-cols-2 gap-3">
-                <StatCard label={isTrainer ? "Ürettiğin ciro (bu ay)" : "Ürettiği ciro (bu ay)"} value={formatTL(trainerRevenue.revenue)} />
+                <StatCard
+                  label={isTrainer ? "Verdiğin derslerin değeri (bu ay)" : "Verdiği derslerin değeri (bu ay)"}
+                  value={formatTL(trainerRevenue.sessionValue)}
+                />
                 <StatCard label={isTrainer ? "Kazandığın prim (bu ay)" : "Ödenecek prim (bu ay)"} value={formatTL(trainerRevenue.commission)} />
               </div>
             )}

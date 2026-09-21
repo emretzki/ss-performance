@@ -24,17 +24,23 @@ export function AddMemberForm({ branchId, member, onClose, onCreated }: AddMembe
   const [packageName, setPackageName] = useState(member?.packageName ?? "");
   const [packageTotalPrice, setPackageTotalPrice] = useState(member?.packageTotalPrice?.toString() ?? "");
   const [packageTotalSessions, setPackageTotalSessions] = useState(member?.packageTotalSessions?.toString() ?? "");
+  const [paidAt, setPaidAt] = useState(() => new Date().toISOString().slice(0, 10));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const totalSessionsNum = Number(packageTotalSessions) || 0;
   const totalPriceNum = Number(packageTotalPrice) || 0;
   const unitPrice = totalSessionsNum > 0 ? totalPriceNum / totalSessionsNum : 0;
+  const hadPackage = isEdit && (member?.packageTotalSessions ?? 0) > 0;
   const packageChanged =
     isEdit &&
     (packageName !== (member?.packageName ?? "") ||
       totalPriceNum !== (member?.packageTotalPrice ?? 0) ||
       totalSessionsNum !== (member?.packageTotalSessions ?? 0));
+  // A member with no prior package has nothing to "continue" — treat any
+  // package entered as a fresh assignment without asking, and only ask when
+  // an existing package's numbers are being changed.
+  const showPackageChoice = hadPackage && packageChanged;
 
   async function handleSubmit(resetUsage: boolean) {
     if (!fullName.trim()) {
@@ -57,6 +63,7 @@ export function AddMemberForm({ branchId, member, onClose, onCreated }: AddMembe
           packageTotalPrice: totalPriceNum || null,
           packageTotalSessions: totalSessionsNum || null,
           resetPackageUsage: resetUsage,
+          packagePaidAt: resetUsage ? paidAt : undefined,
         });
       } else {
         await createMember({ branchId, fullName: fullName.trim(), phone: phone.trim() || null, notes: notes.trim() || null });
@@ -119,6 +126,15 @@ export function AddMemberForm({ branchId, member, onClose, onCreated }: AddMembe
               Birim fiyat: <span className="font-medium text-[var(--color-ink)]">{unitPrice.toLocaleString("tr-TR", { maximumFractionDigits: 0 })} TL</span> / ders
             </p>
           )}
+          {isEdit && (!hadPackage || showPackageChoice) && totalSessionsNum > 0 && (
+            <div>
+              <label className="mb-1.5 block text-[12px] text-[var(--color-ash)]">Ödeme tarihi</label>
+              <input type="date" value={paidAt} onChange={(e) => setPaidAt(e.target.value)} className={inputClass} />
+              <p className="mt-1.5 text-[12px] text-[var(--color-ash)]">
+                Ciro, dersler sonraki aya sarksa bile bu tarihin ait olduğu aya yazılır.
+              </p>
+            </div>
+          )}
           {isEdit && (member?.packageTotalSessions ?? 0) > 0 && (
             <PackageProgressBar used={member!.packageSessionsUsed} total={member!.packageTotalSessions!} size="lg" />
           )}
@@ -126,10 +142,10 @@ export function AddMemberForm({ branchId, member, onClose, onCreated }: AddMembe
 
         {error && <p className="text-[13px] text-[var(--color-danger)]">{error}</p>}
 
-        {isEdit && packageChanged ? (
+        {showPackageChoice ? (
           <div className="flex flex-col gap-2">
             <p className="text-[12px] text-[var(--color-ash)]">
-              Paket bilgilerini değiştirdin. Bu mevcut paketin devamı mı, yoksa yeni bir paket mi (sayaç sıfırlanır)?
+              Paket bilgilerini değiştirdin. Bu mevcut paketin devamı mı, yoksa yeni bir paket mi (sayaç sıfırlanır, ciroya yeni ödeme olarak yazılır)?
             </p>
             <div className="flex gap-2">
               <Button variant="secondary" className="flex-1" onClick={() => handleSubmit(false)} disabled={saving}>
@@ -141,7 +157,7 @@ export function AddMemberForm({ branchId, member, onClose, onCreated }: AddMembe
             </div>
           </div>
         ) : (
-          <Button size="lg" onClick={() => handleSubmit(false)} disabled={saving}>
+          <Button size="lg" onClick={() => handleSubmit(!hadPackage && totalSessionsNum > 0)} disabled={saving}>
             {saving ? "Kaydediliyor..." : isEdit ? "Kaydet" : "Üyeyi ekle"}
           </Button>
         )}

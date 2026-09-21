@@ -1,7 +1,7 @@
-import type { Branch, GymSession, Member, Organization, Profile, Trainer, WorkoutType } from "./types";
+import type { Branch, BranchExpense, GymSession, Member, Organization, Payment, Profile, Trainer, WorkoutType } from "./types";
 import { PT_BADGE_COLORS } from "./types";
 
-const STORAGE_KEY = "gymkoc-mock-db-v2";
+const STORAGE_KEY = "gymkoc-mock-db-v3";
 
 interface MockDB {
   organizations: Organization[];
@@ -11,6 +11,8 @@ interface MockDB {
   members: Member[];
   workoutTypes: WorkoutType[];
   sessions: GymSession[];
+  payments: Payment[];
+  branchExpenses: BranchExpense[];
 }
 
 function todayIso(hour: number, minute: number, dayOffset = 0): string {
@@ -55,11 +57,19 @@ function seed(): MockDB {
     ...trainers.map((t): Profile => ({ id: t.id, organizationId: t.organizationId, branchId: t.branchId, role: "trainer", fullName: t.fullName, phone: t.phone, avatarColor: t.avatarColor })),
   ];
 
+  const todayDate = new Date().toISOString().slice(0, 10);
   const members: Member[] = [
-    { id: "m1", branchId: "b1", fullName: "Kerem Uslu", phone: "0533 111 22 33", notes: null, createdAt: new Date().toISOString(), packageName: "8 Ders Paketi", packageTotalPrice: 6400, packageTotalSessions: 8, packageSessionsUsed: 2 },
-    { id: "m2", branchId: "b1", fullName: "Naz Yavuz", phone: "0533 222 33 44", notes: "Diz sakatlığı geçmişi var", createdAt: new Date().toISOString(), packageName: "12 Ders Paketi", packageTotalPrice: 9000, packageTotalSessions: 12, packageSessionsUsed: 1 },
-    { id: "m3", branchId: "b1", fullName: "Barış Ete", phone: "0533 333 44 55", notes: null, createdAt: new Date().toISOString(), packageName: null, packageTotalPrice: null, packageTotalSessions: null, packageSessionsUsed: 0 },
+    { id: "m1", branchId: "b1", fullName: "Kerem Uslu", phone: "0533 111 22 33", notes: null, createdAt: new Date().toISOString(), packageName: "8 Ders Paketi", packageTotalPrice: 6400, packageTotalSessions: 8, packageSessionsUsed: 2, packagePaidAt: todayDate },
+    { id: "m2", branchId: "b1", fullName: "Naz Yavuz", phone: "0533 222 33 44", notes: "Diz sakatlığı geçmişi var", createdAt: new Date().toISOString(), packageName: "12 Ders Paketi", packageTotalPrice: 9000, packageTotalSessions: 12, packageSessionsUsed: 1, packagePaidAt: todayDate },
+    { id: "m3", branchId: "b1", fullName: "Barış Ete", phone: "0533 333 44 55", notes: null, createdAt: new Date().toISOString(), packageName: null, packageTotalPrice: null, packageTotalSessions: null, packageSessionsUsed: 0, packagePaidAt: null },
   ];
+
+  const payments: Payment[] = [
+    { id: "pay1", memberId: "m1", branchId: "b1", amount: 6400, packageName: "8 Ders Paketi", totalSessions: 8, paidAt: todayDate, createdAt: new Date().toISOString() },
+    { id: "pay2", memberId: "m2", branchId: "b1", amount: 9000, packageName: "12 Ders Paketi", totalSessions: 12, paidAt: todayDate, createdAt: new Date().toISOString() },
+  ];
+
+  const branchExpenses: BranchExpense[] = [{ id: "exp1", branchId: "b1", name: "Kira", amount: 30000, createdAt: new Date().toISOString() }];
 
   const sessions: GymSession[] = [
     { id: "s1", branchId: "b1", trainerId: "t1", memberId: "m1", memberName: "Kerem Uslu", title: "Bire bir PT", workoutTypeId: "wt2", startsAt: todayIso(9, 0), durationMin: 60, status: "scheduled", notes: null, startedAt: null, endedAt: null, createdBy: "t1", createdAt: new Date().toISOString() },
@@ -73,7 +83,7 @@ function seed(): MockDB {
     { id: "s9", branchId: "b3", trainerId: "t5", memberId: null, memberName: "Deneme üye", title: "Bire bir PT", workoutTypeId: "wt5", startsAt: todayIso(9, 30), durationMin: 60, status: "in_progress", notes: null, startedAt: todayIso(9, 35), endedAt: null, createdBy: "t5", createdAt: new Date().toISOString() },
   ];
 
-  return { organizations, branches, profiles, trainers, members, workoutTypes, sessions };
+  return { organizations, branches, profiles, trainers, members, workoutTypes, sessions, payments, branchExpenses };
 }
 
 function load(): MockDB {
@@ -165,12 +175,32 @@ export const mockDB = {
     db = { ...db, members: [...db.members, member] };
     persist();
   },
-  updateMember(id: string, patch: Partial<Pick<Member, "fullName" | "phone" | "notes" | "packageName" | "packageTotalPrice" | "packageTotalSessions" | "packageSessionsUsed">>) {
+  updateMember(
+    id: string,
+    patch: Partial<
+      Pick<
+        Member,
+        "fullName" | "phone" | "notes" | "packageName" | "packageTotalPrice" | "packageTotalSessions" | "packageSessionsUsed" | "packagePaidAt"
+      >
+    >,
+  ) {
     db = { ...db, members: db.members.map((m) => (m.id === id ? { ...m, ...patch } : m)) };
     persist();
   },
   updateTrainerCommission(trainerId: string, commissionRate: number) {
     db = { ...db, trainers: db.trainers.map((t) => (t.id === trainerId ? { ...t, commissionRate } : t)) };
+    persist();
+  },
+  addPayment(payment: Payment) {
+    db = { ...db, payments: [...db.payments, payment] };
+    persist();
+  },
+  addBranchExpense(expense: BranchExpense) {
+    db = { ...db, branchExpenses: [...db.branchExpenses, expense] };
+    persist();
+  },
+  deleteBranchExpense(id: string) {
+    db = { ...db, branchExpenses: db.branchExpenses.filter((e) => e.id !== id) };
     persist();
   },
   addWorkoutType(wt: WorkoutType) {

@@ -85,9 +85,11 @@ export function GuideScreen() {
           <Section title="Raporların">
             <p>
               Sol menüden <strong>Raporlarım</strong>'a girerek bu hafta/bu ay kaç ders verdiğini, geçen döneme göre
-              artış/azalışını ve idman türüne göre dağılımını görebilirsin. Ayrıca bu ay <strong>ürettiğin ciroyu</strong>
-              (üyelerin paket birim fiyatına göre) ve <strong>kazandığın primi</strong> de burada görürsün — sadece kendi
-              rakamların, salonun ya da diğer PT'lerin kazancı gösterilmez.
+              artış/azalışını ve idman türüne göre dağılımını görebilirsin. Ayrıca bu ay <strong>verdiğin derslerin
+              değerini</strong> (üyelerin paket birim fiyatına göre) ve buna karşılık <strong>kazandığın primi</strong> de
+              burada görürsün — sadece kendi rakamların, salonun ya da diğer PT'lerin kazancı gösterilmez. Bu, salonun
+              gerçek cirosundan farklıdır: ciro paketin ödendiği aya yazılır, buradaki rakam ise o ay fiilen verdiğin
+              derslerin değeridir.
             </p>
           </Section>
         )}
@@ -130,6 +132,12 @@ export function GuideScreen() {
                 başlat"</strong>'a bas — sayaç sıfırlanır. Sadece bir yazım hatası düzeltiyorsan "Devamı"nı seç, sayaç
                 aynı kalır.
               </p>
+              <p>
+                Yeni bir paket başlatırken <strong>ödeme tarihini</strong> de girersin (varsayılan bugün). Ders ücreti
+                toplu alındığı için ciroya bu tarih üzerinden, o ayın hesabına yazılır — dersler sonraki aya sarksa bile
+                sonraki ayın cirosuna eklenmez. PT primi buna bağlı değildir: her PT'ye, o ay <strong>fiilen verdiği</strong>
+                dersler üzerinden ödenir.
+              </p>
             </Section>
 
             <Section title="Genel Bakış ve Raporlar">
@@ -139,15 +147,17 @@ export function GuideScreen() {
                 sayılarını ve idman türü dağılımını inceleyebilirsin.
               </p>
               <p>
-                "Tüm şube" seçiliyken <strong>bu ayın cirosunu</strong> (üyelerin paket birim fiyatına göre), salona kalan
-                payı ve PT'lere ödenecek toplam primi görürsün. Tek bir PT seçersen, sadece onun ürettiği ciro ve ona
-                ödenecek prim gösterilir.
+                "Tüm şube" seçiliyken <strong>bu ayın cirosunu</strong> (o ay ödenen paketlerin toplamı), <strong>giderleri</strong>
+                (Ayarlar'da girdiğin sabit aylık giderler), PT'lere ödenecek toplam primi ve bunların sonucunda kalan
+                <strong> salon karını</strong> görürsün. Tek bir PT seçersen, o PT'nin o ay verdiği derslerin değeri ve ona
+                ödenecek prim gösterilir — bu, o PT'nin verdiği derslerin değeridir, ciro değildir; ciro paketin ödendiği
+                aya, prim ise dersin fiilen verildiği aya göre hesaplanır.
               </p>
             </Section>
 
             <Section title="Ayarlar">
               <p>
-                Sol menüden <strong>Ayarlar</strong>'a gir. Üç bölüm var:
+                Sol menüden <strong>Ayarlar</strong>'a gir. Dört bölüm var:
               </p>
               <p>
                 <strong>Marka</strong> — salonun logosunu yükle, salon adını ve marka rengini belirle.
@@ -166,13 +176,9 @@ export function GuideScreen() {
                 ne kadar ders girildiğini karşılaştırmanı sağlar. Artık kullanmadığın bir türü çöp kutusu ikonuyla
                 silebilirsin.
               </p>
-            </Section>
-
-            <Section title="Ayarlar">
               <p>
-                Salonunun adı, logosu ve marka rengi; şubenin adresi ve bir saatteki maksimum ders sayısı (kapasite); ve
-                idman türleri (Boks, Kickbox gibi) hepsi <strong>Ayarlar</strong>'dan yönetilir. Marka rengini değiştirmen,
-                panelin tamamına anında yansır.
+                <strong>Giderler</strong> — kira, elektrik gibi düzenli aylık giderlerini gir (örn. Kira - 30.000 TL). Her
+                biri her ay otomatik olarak Raporlar'daki salon karından düşülür, ayrıca bir işlem yapmana gerek kalmaz.
               </p>
             </Section>
           </>
