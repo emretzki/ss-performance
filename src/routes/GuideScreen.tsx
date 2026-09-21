@@ -92,12 +92,21 @@ export function GuideScreen() {
 
         {isOwner && (
           <>
-            <Section title="Ekip: PT ve üye ekleme">
+            <Section title="Ekip: PT ekleme">
               <p>
-                Sol menüden <strong>Ekip</strong>'e gir. <strong>PT'ler</strong> sekmesinden "Hesap ekle" ile yeni bir PT
-                için giriş bilgileri oluşturabilirsin — oluşan geçici şifreyi PT'ye ilet, ilk girişte kullanır.
-                <strong> Üyeler</strong> sekmesinden salonunuza kayıtlı üyeleri ekleyip not düşebilirsin (üyeler ayrı bir
-                giriş yapmaz, sadece ders kaydında görünür). <strong>Şubeler</strong> sekmesinden yeni bir şube açabilirsin.
+                Sol menüden <strong>Ekip → PT'ler</strong>'e gir, "PT ekle"ye bas. Ad soyad, e-posta ve bir geçici şifre
+                gir (otomatik önerilen şifreyi kullanabilir ya da kendin yazabilirsin), hangi şubeye ait olduğunu seç.
+              </p>
+              <p className="rounded-[var(--radius-md)] bg-[var(--color-danger-tint)] px-3 py-2 text-[var(--color-danger)]">
+                Hesap oluşunca şifre <strong>bir kez</strong> gösterilir. Kapatmadan önce mutlaka kopyala ve PT'ye ilet —
+                "Tamam" butonu sen kopyalamadan aktif olmaz. Kopyalamayı unutsan bile sorun değil: PT kendi giriş
+                ekranındaki <strong>"Şifremi unuttum"</strong> bağlantısıyla e-postasına gelen linkle yeni bir şifre
+                belirleyebilir.
+              </p>
+              <p>
+                <strong>Üyeler</strong> sekmesinden salonunuza kayıtlı üyeleri ekleyip not düşebilirsin (üyeler ayrı bir
+                giriş yapmaz, sadece ders kaydında isim olarak görünür). <strong>Şubeler</strong> sekmesinden yeni bir şube
+                açabilirsin.
               </p>
             </Section>
 
@@ -106,6 +115,29 @@ export function GuideScreen() {
                 <strong>Genel Bakış</strong>, bugün kaç ders girildiğini, en yoğun saati ve PT bazlı günlük dağılımı tek
                 ekranda gösterir. <strong>Raporlar</strong>'da şube genelini ya da tek bir PT'yi seçip haftalık/aylık ders
                 sayılarını ve idman türü dağılımını inceleyebilirsin.
+              </p>
+            </Section>
+
+            <Section title="Ayarlar">
+              <p>
+                Sol menüden <strong>Ayarlar</strong>'a gir. Üç bölüm var:
+              </p>
+              <p>
+                <strong>Marka</strong> — salonun logosunu yükle, salon adını ve marka rengini belirle.
+                Seçtiğin renk, panelin tamamında (butonlar, vurgular, senin ve PT'lerinin gördüğü her yerde) anında
+                kullanılır.
+              </p>
+              <p>
+                <strong>Şube</strong> — şube adı, adres ve <strong>bir saatte kaç ders girilebileceği</strong> (kapasite)
+                buradan ayarlanır. Kapasiteyi salonun büyüklüğüne göre belirle: küçük bir stüdyoysan 1-2, geniş bir
+                salonsan daha fazla olabilir. Birden fazla şuben varsa, önce sol menünün üstündeki <strong>Şube</strong>
+                seçiciden düzenlemek istediğin şubeyi seç — Ayarlar sayfası her zaman o an seçili olan şubeyi gösterir.
+              </p>
+              <p>
+                <strong>İdman türleri</strong> — Boks, Kickbox, Fitness gibi kategoriler ekleyip her birine bir renk
+                verebilirsin. Bu renkler takvimde ders çemberinin etrafında halka olarak görünür ve Raporlar'da hangi türe
+                ne kadar ders girildiğini karşılaştırmanı sağlar. Artık kullanmadığın bir türü çöp kutusu ikonuyla
+                silebilirsin.
               </p>
             </Section>
 

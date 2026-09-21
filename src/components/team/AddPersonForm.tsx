@@ -33,6 +33,18 @@ export function AddPersonForm({ organizationId, branches, defaultBranchId, canCh
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState<{ email: string; password: string } | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy() {
+    if (!created) return;
+    try {
+      await navigator.clipboard.writeText(`E-posta: ${created.email}\nŞifre: ${created.password}`);
+    } catch {
+      // clipboard API unavailable (e.g. insecure context) — the credentials are
+      // still on screen to copy by hand, so this isn't fatal.
+    }
+    setCopied(true);
+  }
 
   async function handleSubmit() {
     if (!email.trim() || !fullName.trim()) {
@@ -56,8 +68,8 @@ export function AddPersonForm({ organizationId, branches, defaultBranchId, canCh
     return (
       <Modal title="Hesap oluşturuldu" onClose={onClose}>
         <div className="flex flex-col gap-4">
-          <p className="text-[14px] text-[var(--color-ink)]">
-            Bu giriş bilgilerini {created.email.split("@")[0]}'e ilet, ilk girişte kullanacak:
+          <p className="rounded-[var(--radius-md)] bg-[var(--color-danger-tint)] px-3 py-2 text-[13px] font-medium text-[var(--color-danger)]">
+            Bu şifre bir daha gösterilmeyecek. Kapatmadan önce kopyala ve {created.email.split("@")[0]}'e ilet.
           </p>
           <div className="flex flex-col gap-2 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface-2)] p-3">
             <div>
@@ -69,8 +81,19 @@ export function AddPersonForm({ organizationId, branches, defaultBranchId, canCh
               <p className="text-[14px] font-medium tabular-nums text-[var(--color-ink)]">{created.password}</p>
             </div>
           </div>
-          <Button size="lg" onClick={onClose}>
-            Tamam
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="flex h-11 w-full items-center justify-center rounded-[var(--radius-md)] border border-[var(--color-line-strong)] text-[14px] font-medium text-[var(--color-ink)] hover:border-[var(--color-ink)]"
+          >
+            {copied ? "Kopyalandı ✓" : "E-posta ve şifreyi kopyala"}
+          </button>
+          <p className="text-[12px] text-[var(--color-ash)]">
+            Kopyalamayı unutursan sorun değil: {created.email.split("@")[0]} kendi giriş ekranındaki "Şifremi unuttum"
+            bağlantısıyla yeni bir şifre belirleyebilir.
+          </p>
+          <Button size="lg" onClick={onClose} disabled={!copied}>
+            {copied ? "Tamam" : "Önce şifreyi kopyala"}
           </Button>
         </div>
       </Modal>
