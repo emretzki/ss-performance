@@ -1,6 +1,6 @@
 import { isSupabaseConfigured, supabase } from "./supabase";
 import { mockDB, subscribeMockDB } from "./mockStore";
-import { slugify } from "./tenant";
+import { slugify, tenantHandoffUrl } from "./tenant";
 import {
   DEFAULT_MAX_SESSIONS_PER_SLOT,
   LIVE_SESSION_AUTO_END_MIN,
@@ -84,6 +84,45 @@ export async function findOrganizationSlugByEmail(email: string): Promise<string
   const profile = mockDB.get().profiles[0]; // mock mode has no emails; just demo the flow with the first profile
   const org = mockDB.get().organizations.find((o) => o.id === profile?.organizationId);
   return org?.slug ?? null;
+}
+
+export type RootLoginResult =
+  | { ok: true; handoffUrl: string }
+  | { ok: false; error: string };
+
+/**
+ * The root gymkoc.com login: authenticate once here, then hand the session
+ * off to the account's own tenant subdomain (see src/lib/tenant.ts) so the
+ * person never has to know or type their gym's address.
+ */
+export async function signInAtRootAndGetHandoff(email: string, password: string): Promise<RootLoginResult> {
+  if (!isSupabaseConfigured || !supabase) {
+    return { ok: false, error: "Bu özellik sadece gymkoc.com'da çalışır." };
+  }
+  const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+  if (signInError || !signInData.session) {
+    return { ok: false, error: "Giriş yapılamadı. E-posta veya şifre hatalı." };
+  }
+
+  const { data: p, error: profileError } = await supabase
+    .from("profiles")
+    .select("organizations(slug)")
+    .eq("id", signInData.user.id)
+    .single();
+  if (profileError || !p) {
+    await supabase.auth.signOut({ scope: "local" });
+    return { ok: false, error: "Bu hesap için bir salon bulunamadı." };
+  }
+  const org = Array.isArray(p.organizations) ? p.organizations[0] : p.organizations;
+  if (!org?.slug) {
+    await supabase.auth.signOut({ scope: "local" });
+    return { ok: false, error: "Bu hesap için bir salon bulunamadı." };
+  }
+
+  const handoffUrl = tenantHandoffUrl(org.slug, signInData.session.access_token, signInData.session.refresh_token);
+  // Only clear this browser's local copy — the tokens we're handing off must stay valid.
+  await supabase.auth.signOut({ scope: "local" });
+  return { ok: true, handoffUrl };
 }
 
 export async function updateOrganization(

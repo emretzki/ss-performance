@@ -1,27 +1,27 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { Barbell } from "@phosphor-icons/react";
-import { findOrganizationSlugByEmail } from "@/lib/api";
-import { tenantUrl } from "@/lib/tenant";
+import { signInAtRootAndGetHandoff } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
 
 export function LandingScreen() {
-  const [mode, setMode] = useState<"pitch" | "find">("pitch");
+  const [mode, setMode] = useState<"pitch" | "login">("pitch");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleFind(e: FormEvent) {
+  async function handleLogin(e: FormEvent) {
     e.preventDefault();
     setError(null);
     setLoading(true);
     try {
-      const slug = await findOrganizationSlugByEmail(email.trim());
-      if (!slug) {
-        setError("Bu e-postayla ilişkili bir salon bulamadık. Adresi kontrol et veya yeni bir salon oluştur.");
+      const result = await signInAtRootAndGetHandoff(email.trim(), password);
+      if (!result.ok) {
+        setError(result.error);
         return;
       }
-      window.location.href = tenantUrl(slug);
+      window.location.href = result.handoffUrl;
     } catch {
       setError("Bir şeyler ters gitti, tekrar dene.");
     } finally {
@@ -50,26 +50,36 @@ export function LandingScreen() {
                 Salonunu oluştur
               </Button>
             </Link>
-            <Button variant="secondary" size="lg" onClick={() => setMode("find")}>
-              Salonuna giriş yap
+            <Button variant="secondary" size="lg" className="w-full" onClick={() => setMode("login")}>
+              Giriş yap
             </Button>
           </div>
         ) : (
-          <form onSubmit={handleFind} className="flex w-full flex-col gap-3">
-            <p className="text-[13px] text-[var(--color-ash)]">
-              Salonunun adresini (salonadi.gymkoc.com) hatırlamıyorsan, hesabına kayıtlı e-postayı gir, seni oraya yönlendirelim.
-            </p>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="e-posta@ornek.com"
-              className="h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-line-strong)] bg-[var(--color-surface)] px-3 text-[14px] text-[var(--color-ink)] focus:border-[var(--color-gold)]"
-            />
+          <form onSubmit={handleLogin} className="flex w-full flex-col gap-3">
+            <p className="text-[13px] text-[var(--color-ash)]">E-posta ve şifreni gir — hangi salona ait olduğunu biz buluruz.</p>
+            <div>
+              <label className="mb-1.5 block text-[13px] font-medium text-[var(--color-ink-soft)]">E-posta</label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-line-strong)] bg-[var(--color-surface)] px-3 text-[14px] text-[var(--color-ink)] focus:border-[var(--color-gold)]"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-[13px] font-medium text-[var(--color-ink-soft)]">Şifre</label>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-line-strong)] bg-[var(--color-surface)] px-3 text-[14px] text-[var(--color-ink)] focus:border-[var(--color-gold)]"
+              />
+            </div>
             {error && <p className="text-[13px] text-[var(--color-danger)]">{error}</p>}
             <Button type="submit" size="lg" disabled={loading}>
-              {loading ? "Aranıyor..." : "Salonumu bul"}
+              {loading ? "Giriş yapılıyor..." : "Giriş yap"}
             </Button>
             <button type="button" onClick={() => setMode("pitch")} className="text-center text-[13px] font-medium text-[var(--color-ink-soft)]">
               Vazgeç

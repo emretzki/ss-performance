@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { mockDB } from "@/lib/mockStore";
+import { clearHandoffHash, readSessionHandoffFromHash } from "@/lib/tenant";
 import type { Profile } from "@/lib/types";
 
 const SESSION_KEY = "sportscience-mock-session";
@@ -27,6 +28,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (isSupabaseConfigured && supabase) {
       const client = supabase;
+
+      // Arriving from a cross-subdomain login handoff (see src/lib/tenant.ts)?
+      // Establish the session here before anything else runs.
+      const handoff = readSessionHandoffFromHash();
+      if (handoff) {
+        clearHandoffHash();
+        client.auth.setSession({ access_token: handoff.accessToken, refresh_token: handoff.refreshToken });
+      }
 
       const { data: sub } = client.auth.onAuthStateChange(async (event, session) => {
         if (event === "PASSWORD_RECOVERY") {

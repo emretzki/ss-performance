@@ -2,7 +2,7 @@ import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
-import { createOrganization } from "@/lib/api";
+import { createOrganization, signInAtRootAndGetHandoff } from "@/lib/api";
 import { tenantUrl } from "@/lib/tenant";
 import { Button } from "@/components/ui/Button";
 
@@ -67,9 +67,10 @@ export function SignupScreen() {
       });
 
       if (isSupabaseConfigured && supabase) {
-        // Subdomains are separate origins, so there's no session to carry
-        // over — send them to their new tenant's own login page.
-        window.location.href = tenantUrl(slug);
+        // Sign them straight into their brand-new tenant instead of making
+        // them log in again with credentials they just typed.
+        const result = await signInAtRootAndGetHandoff(email, password);
+        window.location.href = result.ok ? result.handoffUrl : tenantUrl(slug);
         return;
       }
       signInMock(userId);
