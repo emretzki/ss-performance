@@ -266,7 +266,10 @@ export function SettingsScreen() {
                 value={newExpenseName}
                 onChange={(e) => setNewExpenseName(e.target.value)}
                 placeholder="Gider adı (örn. Kira)"
-                className={inputClass}
+                // inputClass bakes in w-full, which would fight flex-1/w-28
+                // below for the `width` property — build these two from the
+                // same styling minus that one class instead.
+                className={`${inputClass.replace("w-full", "")} min-w-0 flex-1`}
               />
               <input
                 type="number"
@@ -274,7 +277,7 @@ export function SettingsScreen() {
                 value={newExpenseAmount}
                 onChange={(e) => setNewExpenseAmount(e.target.value)}
                 placeholder="Aylık TL"
-                className={`${inputClass} w-32 shrink-0`}
+                className={`${inputClass.replace("w-full", "")} w-28 shrink-0`}
               />
               <Button onClick={handleAddExpense} className="shrink-0">
                 Ekle
