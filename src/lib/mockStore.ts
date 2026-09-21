@@ -22,8 +22,8 @@ function todayIso(hour: number, minute: number, dayOffset = 0): string {
 
 function seed(): MockDB {
   const organizations: Organization[] = [
-    { id: "org1", name: "SportScience", logoUrl: null, accentColor: "#96792C", ownerAuthId: "owner1", createdAt: new Date().toISOString() },
-    { id: "org2", name: "Fitness Farm", logoUrl: null, accentColor: "#C99A2E", ownerAuthId: "owner2", createdAt: new Date().toISOString() },
+    { id: "org1", name: "SportScience", slug: "sportscience", logoUrl: null, accentColor: "#96792C", ownerAuthId: "owner1", createdAt: new Date().toISOString() },
+    { id: "org2", name: "Fitness Farm", slug: "fitnessfarm", logoUrl: null, accentColor: "#C99A2E", ownerAuthId: "owner2", createdAt: new Date().toISOString() },
   ];
 
   const branches: Branch[] = [

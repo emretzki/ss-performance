@@ -68,19 +68,33 @@ Deno.serve(async (req) => {
       }
     }
 
-    const { data: org, error: orgError } = await admin
-      .from("organizations")
-      .insert({
-        name: body.orgName,
-        logo_url: logoUrl,
-        accent_color: body.accentColor,
-        owner_auth_id: userId,
-      })
-      .select()
-      .single();
-    if (orgError) {
+    const baseSlug = slugify(body.orgName) || "salon";
+    let org: { id: string; slug: string } | null = null;
+    let orgError: { message: string; code?: string } | null = null;
+    for (let attempt = 0; attempt < 20; attempt++) {
+      const candidate = attempt === 0 ? baseSlug : `${baseSlug}-${attempt + 1}`;
+      const { data, error } = await admin
+        .from("organizations")
+        .insert({
+          name: body.orgName,
+          slug: candidate,
+          logo_url: logoUrl,
+          accent_color: body.accentColor,
+          owner_auth_id: userId,
+        })
+        .select()
+        .single();
+      if (!error) {
+        org = data;
+        orgError = null;
+        break;
+      }
+      orgError = error;
+      if (error.code !== "23505") break; // not a "slug already taken" conflict, stop retrying
+    }
+    if (!org) {
       await admin.auth.admin.deleteUser(userId);
-      return json({ error: orgError.message }, 400);
+      return json({ error: orgError?.message ?? "Salon oluşturulamadı." }, 400);
     }
 
     const { error: profileError } = await admin.from("profiles").insert({
@@ -113,11 +127,20 @@ Deno.serve(async (req) => {
       return json({ error: workoutTypeError.message }, 400);
     }
 
-    return json({ userId, organizationId: org.id, branchId: branch.id }, 200);
+    return json({ userId, organizationId: org.id, slug: org.slug, branchId: branch.id }, 200);
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : "Beklenmeyen hata." }, 500);
   }
 });
+
+function slugify(input: string): string {
+  const map: Record<string, string> = { ç: "c", ğ: "g", ı: "i", ö: "o", ş: "s", ü: "u" };
+  return input
+    .toLowerCase()
+    .replace(/[çğıöşü]/g, (c) => map[c] ?? c)
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
 
 function json(body: unknown, status: number) {
   return new Response(JSON.stringify(body), {

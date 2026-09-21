@@ -1,5 +1,6 @@
 import { isSupabaseConfigured, supabase } from "./supabase";
 import { mockDB, subscribeMockDB } from "./mockStore";
+import { slugify } from "./tenant";
 import {
   DEFAULT_MAX_SESSIONS_PER_SLOT,
   LIVE_SESSION_AUTO_END_MIN,
@@ -40,22 +41,49 @@ export function displayStatus(session: GymSession, now: Date = new Date()): Sess
 // Organizations
 // ---------------------------------------------------------------------------
 
+function mapOrganization(r: Record<string, unknown>): Organization {
+  return {
+    id: r.id as string,
+    name: r.name as string,
+    slug: r.slug as string,
+    logoUrl: r.logo_url as string | null,
+    accentColor: r.accent_color as string,
+    ownerAuthId: r.owner_auth_id as string,
+    createdAt: r.created_at as string,
+  };
+}
+
 export async function getMyOrganization(organizationId: string): Promise<Organization> {
   if (isSupabaseConfigured && supabase) {
     const { data, error } = await supabase.from("organizations").select("*").eq("id", organizationId).single();
     if (error) throw error;
-    return {
-      id: data.id,
-      name: data.name,
-      logoUrl: data.logo_url,
-      accentColor: data.accent_color,
-      ownerAuthId: data.owner_auth_id,
-      createdAt: data.created_at,
-    };
+    return mapOrganization(data);
   }
   const org = mockDB.get().organizations.find((o) => o.id === organizationId);
   if (!org) throw new Error("Organizasyon bulunamadı.");
   return org;
+}
+
+/** Public lookup (no auth required) used to brand a tenant's login page before anyone signs in. */
+export async function getOrganizationBySlug(slug: string): Promise<Organization | null> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from("organizations").select("*").eq("slug", slug).maybeSingle();
+    if (error) throw error;
+    return data ? mapOrganization(data) : null;
+  }
+  return mockDB.get().organizations.find((o) => o.slug === slug) ?? null;
+}
+
+/** "Salonumu bul" flow on the root landing page: email in, tenant slug out (or null). */
+export async function findOrganizationSlugByEmail(email: string): Promise<string | null> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.rpc("find_organization_slug_by_email", { input_email: email });
+    if (error) throw error;
+    return (data as string | null) ?? null;
+  }
+  const profile = mockDB.get().profiles[0]; // mock mode has no emails; just demo the flow with the first profile
+  const org = mockDB.get().organizations.find((o) => o.id === profile?.organizationId);
+  return org?.slug ?? null;
 }
 
 export async function updateOrganization(
@@ -101,14 +129,14 @@ export interface CreateOrganizationInput {
   branchAddress: string | null;
 }
 
-export async function createOrganization(input: CreateOrganizationInput): Promise<{ userId: string }> {
+export async function createOrganization(input: CreateOrganizationInput): Promise<{ userId: string; slug: string }> {
   if (isSupabaseConfigured && supabase) {
-    const { data, error } = await supabase.functions.invoke<{ userId: string; error?: string }>("create-organization", {
+    const { data, error } = await supabase.functions.invoke<{ userId: string; slug: string; error?: string }>("create-organization", {
       body: input,
     });
     if (error) throw error;
     if (!data || data.error) throw new Error(data?.error ?? "Salon oluşturulamadı.");
-    return { userId: data.userId };
+    return { userId: data.userId, slug: data.slug };
   }
 
   const orgId = `org${Date.now()}`;
@@ -116,13 +144,21 @@ export async function createOrganization(input: CreateOrganizationInput): Promis
   const branchId = `b${Date.now()}`;
   const workoutTypeId = `wt${Date.now()}`;
   const logoUrl = input.logoBase64 && input.logoContentType ? `data:${input.logoContentType};base64,${input.logoBase64}` : null;
+  const existingSlugs = new Set(mockDB.get().organizations.map((o) => o.slug));
+  const base = slugify(input.orgName) || "salon";
+  let slug = base;
+  let n = 2;
+  while (existingSlugs.has(slug)) {
+    slug = `${base}-${n}`;
+    n += 1;
+  }
   mockDB.addOrganizationBundle(
-    { id: orgId, name: input.orgName, logoUrl, accentColor: input.accentColor, ownerAuthId: userId, createdAt: new Date().toISOString() },
+    { id: orgId, name: input.orgName, slug, logoUrl, accentColor: input.accentColor, ownerAuthId: userId, createdAt: new Date().toISOString() },
     { id: branchId, organizationId: orgId, name: input.orgName, address: input.branchAddress, maxConcurrentSessions: DEFAULT_MAX_SESSIONS_PER_SLOT, createdAt: new Date().toISOString() },
     { id: userId, organizationId: orgId, branchId: null, role: "owner", fullName: input.fullName, phone: null, avatarColor: "var(--color-gold)" },
     { id: workoutTypeId, organizationId: orgId, name: "Bire bir PT", color: input.accentColor, createdAt: new Date().toISOString() },
   );
-  return { userId };
+  return { userId, slug };
 }
 
 // ---------------------------------------------------------------------------

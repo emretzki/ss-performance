@@ -1,8 +1,9 @@
 import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { createOrganization } from "@/lib/api";
+import { tenantUrl } from "@/lib/tenant";
 import { Button } from "@/components/ui/Button";
 
 const inputClass =
@@ -22,7 +23,6 @@ function fileToBase64(file: File): Promise<string> {
 
 export function SignupScreen() {
   const { profile, signInMock } = useAuth();
-  const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [orgName, setOrgName] = useState("");
@@ -55,7 +55,7 @@ export function SignupScreen() {
         logoContentType = logoFile.type;
       }
 
-      const { userId } = await createOrganization({
+      const { userId, slug } = await createOrganization({
         email,
         password,
         fullName,
@@ -67,15 +67,12 @@ export function SignupScreen() {
       });
 
       if (isSupabaseConfigured && supabase) {
-        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-        if (signInError) {
-          setError("Salon oluşturuldu ama otomatik giriş yapılamadı, giriş ekranından dene.");
-          navigate("/login");
-          return;
-        }
-      } else {
-        signInMock(userId);
+        // Subdomains are separate origins, so there's no session to carry
+        // over — send them to their new tenant's own login page.
+        window.location.href = tenantUrl(slug);
+        return;
       }
+      signInMock(userId);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Salon oluşturulamadı.");
     } finally {
@@ -140,9 +137,9 @@ export function SignupScreen() {
             {saving ? "Oluşturuluyor..." : "Salonu oluştur"}
           </Button>
 
-          <Link to="/login" className="text-center text-[13px] font-medium text-[var(--color-ink-soft)]">
-            Zaten hesabın var mı? Giriş yap
-          </Link>
+          <a href="/" className="text-center text-[13px] font-medium text-[var(--color-ink-soft)]">
+            Zaten bir salonun var mı? Giriş yap
+          </a>
         </form>
       </div>
     </div>

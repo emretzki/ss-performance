@@ -28,6 +28,7 @@ Supabase henüz bağlı değilken (`.env` boşsa) uygulama otomatik olarak **moc
    - `0003_notes_and_avatars.sql` — ders notu, PT profil fotoğrafı (`avatars` bucket).
    - `0004_multi_tenant.sql` — **çok kiracılı dönüşüm**: `organizations` tablosu, her şubeye özel ders kapasitesi, idman türleri, canlı ders (başlat/bitir) alanları, organizasyon bazlı RLS.
    - `0005_cron.sql` — devam eden bir ders 1 saati geçerse otomatik "tamamlandı" işaretlenmesi (5 dakikada bir çalışan zamanlanmış görev). Hata verirse önce Dashboard → **Database** → **Extensions**'tan `pg_cron`'u etkinleştirip tekrar dene.
+   - `0006_subdomains.sql` — her organizasyona bir `slug` (alt alan adı) atar, giriş ekranının marka gösterebilmesi için herkese açık bir "sadece marka bilgisi" okuma izni ekler.
 5. Supabase Auth'ta **ilk** kullanıcıyı (kendini, ilk salonun sahibi olarak) oluştur — bundan sonrakiler uygulama içinden eklenecek:
    - Dashboard → Authentication → Users → Add user (Auto Confirm User işaretli) → oluşan UID'yi kopyala.
    - Table Editor → `organizations` → Insert row: `name`, `accent_color` (örn. `#96792C`), `owner_auth_id` = o UID.
@@ -40,6 +41,18 @@ Supabase henüz bağlı değilken (`.env` boşsa) uygulama otomatik olarak **moc
 7. `npm run dev`'i yeniden başlat.
 
 Bundan sonra: yeni bir salon **/signup** ekranından kendi kendine (self-servis) oluşturulabilir; mevcut bir salonun sahibi kendi ekibini, şubelerini, marka logosunu/rengini ve idman türlerini tamamen uygulama içinden (Ekip + Ayarlar) yönetir — Supabase'e bir daha girmeye gerek kalmaz.
+
+## gymkoc.com domain'ini bağlama (alt alan adları: salonadi.gymkoc.com)
+
+Uygulama artık hostname'e göre davranıyor: `gymkoc.com` (kök) herkese açık, markasız bir karşılama sayfası gösterir; `salonadi.gymkoc.com` doğrudan o salonun (kendi logosu/rengiyle) giriş ekranına gider. Bunun için:
+
+1. Vercel projesinde **Settings → Domains** → `gymkoc.com` ekle, ardından ayrıca `*.gymkoc.com` (wildcard) ekle. Vercel her ikisi için de gereken DNS kayıtlarını (kök için A/ALIAS, wildcard için CNAME) ekranda gösterir.
+2. Bu kayıtları domain'i aldığın yerin (ya da Cloudflare gibi kullanıyorsan onun) DNS panelinden ekle.
+3. SSL sertifikaları (kök + wildcard) Vercel tarafından otomatik sağlanır, birkaç dakika sürebilir.
+4. `0006_subdomains.sql` migration'ını çalıştırdıktan sonra her organizasyonun bir `slug`'ı olur (isimden otomatik türetilir, örn. "SportScience" → `sportscience`). Mevcut organizasyonların slug'ını Table Editor → `organizations`'tan görüp istersen değiştirebilirsin.
+5. Yeni bir salon `/signup`'tan oluşturulduğunda otomatik olarak kendi `slug.gymkoc.com` adresine yönlendirilir.
+
+Not: Vercel'in varsayılan `*.vercel.app` adresi de çalışmaya devam eder (o zaman uygulama "kiracı yok" moduna düşer ve markasız giriş ekranını gösterir) — asıl kullanım artık her zaman kendi alt alan adı üzerinden olacak.
 
 ## Yapı
 

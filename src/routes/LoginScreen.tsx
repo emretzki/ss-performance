@@ -1,21 +1,34 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { Barbell } from "@phosphor-icons/react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTenant } from "@/contexts/TenantContext";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { mockDB } from "@/lib/mockStore";
 import { Button } from "@/components/ui/Button";
 
 export function LoginScreen() {
-  const { profile, signInMock, authError } = useAuth();
+  const { profile, signInMock, authError, signOut } = useAuth();
+  const tenant = useTenant();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<"login" | "forgot" | "forgot-sent">("login");
   const [resetSending, setResetSending] = useState(false);
+  const [wrongTenant, setWrongTenant] = useState<string | null>(null);
 
-  if (profile) return <Navigate to="/calendar" replace />;
+  const tenantOrg = tenant.status === "ready" ? tenant.organization : null;
+
+  useEffect(() => {
+    if (!profile || !tenantOrg) return;
+    if (profile.organizationId !== tenantOrg.id) {
+      setWrongTenant(profile.organizationId);
+      signOut();
+    }
+  }, [profile, tenantOrg, signOut]);
+
+  if (profile && !wrongTenant) return <Navigate to="/calendar" replace />;
 
   async function handleForgotSubmit(e: FormEvent) {
     e.preventDefault();
@@ -36,6 +49,7 @@ export function LoginScreen() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    setWrongTenant(null);
     if (!isSupabaseConfigured || !supabase) return;
     setLoading(true);
     const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
@@ -53,18 +67,29 @@ export function LoginScreen() {
 
   const demoProfiles = mockDB.get().profiles;
   const demoOrgs = mockDB.get().organizations;
+  const signupHref = isSupabaseConfigured ? "https://gymkoc.com/signup" : "/signup";
 
   return (
     <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-[var(--color-paper)] px-6 py-10">
       <div className="flex w-full max-w-sm flex-col items-center gap-6">
-        <span className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--color-ink)] text-[var(--color-paper)]">
-          <Barbell size={28} weight="fill" />
-        </span>
+        {tenantOrg?.logoUrl ? (
+          <img src={tenantOrg.logoUrl} alt={tenantOrg.name} className="h-16 w-16 rounded-full object-contain" />
+        ) : (
+          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--color-ink)] text-[var(--color-paper)]">
+            <Barbell size={28} weight="fill" />
+          </span>
+        )}
 
         <div className="text-center">
-          <h1 className="font-display text-[26px] font-bold leading-none text-[var(--color-ink)]">Salon Yönetim Paneli</h1>
+          <h1 className="font-display text-[26px] font-bold leading-none text-[var(--color-ink)]">{tenantOrg?.name ?? "Salon Yönetim Paneli"}</h1>
           <p className="mt-1.5 text-[13px] text-[var(--color-ash)]">Şubeni, ekibini ve dersleri tek yerden yönet.</p>
         </div>
+
+        {wrongTenant && (
+          <p className="rounded-[var(--radius-md)] bg-[var(--color-danger-tint)] px-3 py-2 text-center text-[13px] text-[var(--color-danger)]">
+            Bu hesap bu salona ait değil. Kendi salonunun adresinden giriş yapmayı dene.
+          </p>
+        )}
 
         {isSupabaseConfigured && mode === "forgot-sent" ? (
           <div className="flex w-full flex-col items-center gap-4 text-center">
@@ -141,9 +166,9 @@ export function LoginScreen() {
             <Button type="submit" size="lg" disabled={loading} className="mt-2">
               {loading ? "Giriş yapılıyor..." : "Giriş yap"}
             </Button>
-            <Link to="/signup" className="text-center text-[13px] font-medium text-[var(--color-ink-soft)]">
+            <a href={signupHref} className="text-center text-[13px] font-medium text-[var(--color-ink-soft)]">
               Yeni salon oluştur
-            </Link>
+            </a>
           </form>
         ) : (
           <div className="flex w-full flex-col gap-3">

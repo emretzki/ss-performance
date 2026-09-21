@@ -3,6 +3,7 @@ export type Role = "super_admin" | "owner" | "trainer";
 export interface Organization {
   id: string;
   name: string;
+  slug: string;
   logoUrl: string | null;
   accentColor: string;
   ownerAuthId: string;
