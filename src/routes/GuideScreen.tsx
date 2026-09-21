@@ -85,7 +85,9 @@ export function GuideScreen() {
           <Section title="Raporların">
             <p>
               Sol menüden <strong>Raporlarım</strong>'a girerek bu hafta/bu ay kaç ders verdiğini, geçen döneme göre
-              artış/azalışını ve idman türüne göre dağılımını görebilirsin.
+              artış/azalışını ve idman türüne göre dağılımını görebilirsin. Ayrıca bu ay <strong>ürettiğin ciroyu</strong>
+              (üyelerin paket birim fiyatına göre) ve <strong>kazandığın primi</strong> de burada görürsün — sadece kendi
+              rakamların, salonun ya da diğer PT'lerin kazancı gösterilmez.
             </p>
           </Section>
         )}
@@ -108,6 +110,24 @@ export function GuideScreen() {
                 giriş yapmaz, sadece ders kaydında isim olarak görünür). <strong>Şubeler</strong> sekmesinden yeni bir şube
                 açabilirsin.
               </p>
+              <p>
+                Bir PT'ye tıklayınca <strong>prim oranını</strong> ayarlayabilirsin — bu PT'nin verdiği bir dersten alacağı
+                yüzde. Örn. ders birim fiyatı 1.300 TL, oran %40 ise PT 520 TL, salon 780 TL kazanır. Kendi verdiğin
+                dersler bu hesaba dahil değildir — hepsi doğrudan salon karına yazılır.
+              </p>
+            </Section>
+
+            <Section title="Üye paketleri">
+              <p>
+                Bir üyeye tıklayınca <strong>paket adı, toplam ücret ve toplam ders sayısı</strong> girebilirsin — birim
+                fiyat (ücret ÷ ders sayısı) otomatik hesaplanır. Üye listesinde her satırda kaç ders kaldığını gösteren
+                animasyonlu bir çubuk görürsün; bu üyeye her ders girdiğinde çubuk otomatik azalır.
+              </p>
+              <p>
+                Paket bitip yeni bir paket alındığında, aynı üyeyi aç, yeni bilgileri gir ve <strong>"Yeni paket
+                başlat"</strong>'a bas — sayaç sıfırlanır. Sadece bir yazım hatası düzeltiyorsan "Devamı"nı seç, sayaç
+                aynı kalır.
+              </p>
             </Section>
 
             <Section title="Genel Bakış ve Raporlar">
@@ -115,6 +135,11 @@ export function GuideScreen() {
                 <strong>Genel Bakış</strong>, bugün kaç ders girildiğini, en yoğun saati ve PT bazlı günlük dağılımı tek
                 ekranda gösterir. <strong>Raporlar</strong>'da şube genelini ya da tek bir PT'yi seçip haftalık/aylık ders
                 sayılarını ve idman türü dağılımını inceleyebilirsin.
+              </p>
+              <p>
+                "Tüm şube" seçiliyken <strong>bu ayın cirosunu</strong> (üyelerin paket birim fiyatına göre), salona kalan
+                payı ve PT'lere ödenecek toplam primi görürsün. Tek bir PT seçersen, sadece onun ürettiği ciro ve ona
+                ödenecek prim gösterilir.
               </p>
             </Section>
 
