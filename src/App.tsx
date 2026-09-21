@@ -11,6 +11,7 @@ import { LoginScreen } from "@/routes/LoginScreen";
 import { SignupScreen } from "@/routes/SignupScreen";
 import { PrivacyScreen } from "@/routes/PrivacyScreen";
 import { TermsScreen } from "@/routes/TermsScreen";
+import { AdminScreen } from "@/routes/AdminScreen";
 import { ResetPasswordScreen } from "@/routes/ResetPasswordScreen";
 import { CalendarScreen } from "@/components/calendar/CalendarScreen";
 import { OverviewScreen } from "@/routes/OverviewScreen";
@@ -59,6 +60,7 @@ export default function App() {
         <Route path="/signup" element={<SignupScreen />} />
         <Route path="/gizlilik-politikasi" element={<PrivacyScreen />} />
         <Route path="/kullanim-kosullari" element={<TermsScreen />} />
+        <Route path="/admin" element={<AdminScreen />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     );
