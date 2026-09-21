@@ -28,6 +28,13 @@ const LANDING_MARKUP = `
     </div>
     <h1>Salonun<br><em>tek panelde</em>.</h1>
     <p class="gk-hero__sub">Antrenörler dersini sahada, telefonlarından saniyeler içinde girer. Sen her şubeyi, her PT'yi tek ekrandan izlersin.</p>
+
+    <ol class="gk-howit">
+      <li><span class="gk-howit__n">1</span>Salonunu saniyeler içinde kaydet</li>
+      <li><span class="gk-howit__n">2</span>PT'lerini panele davet et</li>
+      <li><span class="gk-howit__n">3</span>Dersleri takvimden gir, raporları izle</li>
+    </ol>
+
     <div class="gk-hero__actions">
       <a class="gk-link gk-link--primary" href="/signup">Salonunu oluştur</a>
       <a class="gk-link" href="/" data-gk-login>Giriş yap</a>

@@ -101,7 +101,40 @@
   font-size: clamp(1.05rem, 2vw, 1.35rem);
   line-height: 1.5;
   color: var(--sc-ink-soft);
+  margin: 0 0 var(--sc-7);
+}
+.gk-howit {
+  list-style: none;
   margin: 0 0 var(--sc-9);
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sc-6);
+}
+.gk-howit li {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--sc-font-text);
+  font-size: 0.875rem;
+  color: var(--sc-ink-soft);
+}
+.gk-howit__n {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border-radius: 999px;
+  border: 1px solid rgba(184,240,40,0.4);
+  color: var(--sc-accent);
+  font-family: var(--sc-font-text);
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+@media (max-width: 560px) {
+  .gk-howit { flex-direction: column; align-items: flex-start; gap: var(--sc-3); }
 }
 .gk-hero__actions {
   display: flex;
