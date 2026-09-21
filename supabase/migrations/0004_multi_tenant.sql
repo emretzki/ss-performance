@@ -18,7 +18,7 @@ declare
   legacy_org_id uuid;
   legacy_owner uuid;
 begin
-  if exists (select 1 from branches limit 1) and not exists (select 1 from organizations limit 1) then
+  if exists (select 1 from profiles limit 1) and not exists (select 1 from organizations limit 1) then
     select id into legacy_owner from profiles where role in ('super_admin', 'owner') order by created_at asc limit 1;
     if legacy_owner is null then
       select id into legacy_owner from profiles order by created_at asc limit 1;
