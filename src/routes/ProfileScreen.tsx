@@ -1,5 +1,6 @@
 import { useRef, useState, type ChangeEvent } from "react";
-import { Camera } from "@phosphor-icons/react";
+import { Link } from "react-router-dom";
+import { BookOpen, Camera } from "@phosphor-icons/react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBranch } from "@/contexts/BranchContext";
 import { Button } from "@/components/ui/Button";
@@ -69,7 +70,14 @@ export function ProfileScreen() {
           </p>
         </div>
         {profile.phone && <p className="text-[13px] text-[var(--color-ink-soft)]">{profile.phone}</p>}
-        <Button variant="secondary" onClick={signOut} className="mt-4 w-full">
+        <Link
+          to="/rehber"
+          className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-line-strong)] text-[14px] font-medium text-[var(--color-ink)] lg:hidden"
+        >
+          <BookOpen size={18} />
+          Kullanım kılavuzu
+        </Link>
+        <Button variant="secondary" onClick={signOut} className="w-full lg:mt-4">
           Çıkış yap
         </Button>
       </div>

@@ -115,7 +115,11 @@ export function CalendarScreen() {
     setView("day");
   }
 
-  const isTrainer = profile?.role === "trainer";
+  // Trainers always log their own sessions. Owners who also personally coach
+  // (a common case: a small gym's owner is often its lead PT too) get the same
+  // self-logging flow — the backend lazily creates their trainers row on first
+  // use. super_admin stays on the read-only summary panel.
+  const canSelfLog = profile?.role === "trainer" || profile?.role === "owner";
 
   if (!activeBranchId) {
     if (profile?.role === "super_admin" && branches.length === 0) {
@@ -192,7 +196,7 @@ export function CalendarScreen() {
 
       {selectedSlot &&
         profile &&
-        isTrainer &&
+        canSelfLog &&
         (() => {
           const ownSession = selectedSlot.sessions.find((s) => s.trainerId === profile.id && s.status !== "cancelled");
           if (ownSession) {
@@ -220,13 +224,20 @@ export function CalendarScreen() {
               branchId={activeBranchId}
               capacity={capacity}
               onClose={() => setSelectedSlot(null)}
-              onCreated={() => qc.invalidateQueries({ queryKey: ["sessions", activeBranchId] })}
+              onCreated={() => {
+                // A first self-logged session (owner or a brand-new trainer)
+                // lazily creates their trainers row server-side; refetch it
+                // too, or the new session is invisible until next reload
+                // (filtered out by the stale trainer id set).
+                qc.invalidateQueries({ queryKey: ["sessions", activeBranchId] });
+                qc.invalidateQueries({ queryKey: ["trainers", activeBranchId] });
+              }}
               onJumpTo={handleJumpTo}
             />
           );
         })()}
 
-      {selectedSlot && profile && !isTrainer && (
+      {selectedSlot && profile && !canSelfLog && (
         <SlotDetailsPanel
           day={selectedSlot.day}
           hour={selectedSlot.hour}

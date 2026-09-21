@@ -536,7 +536,42 @@ async function getBranchCapacity(branchId: string): Promise<number> {
   return branches.find((b) => b.id === branchId)?.maxConcurrentSessions ?? DEFAULT_MAX_SESSIONS_PER_SLOT;
 }
 
+// A şube sahibi (owner) who also personally coaches has no `trainers` row by
+// default — only accounts created with role "trainer" get one. sessions.trainer_id
+// is a foreign key into trainers, not profiles, so logging a session under
+// their own name would otherwise fail outright. Create that row lazily, the
+// first time they actually try to log a session themselves, instead of
+// requiring a separate setup step.
+async function ensureTrainerRecordExists(trainerId: string, branchId: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { data: existing } = await supabase.from("trainers").select("id").eq("id", trainerId).maybeSingle();
+    if (existing) return;
+    const { error } = await supabase.from("trainers").insert({ id: trainerId, branch_id: branchId, badge_color: randomBadgeColor() });
+    if (error) throw error;
+    return;
+  }
+  const db = mockDB.get();
+  if (db.trainers.some((t) => t.id === trainerId)) return;
+  const p = db.profiles.find((pr) => pr.id === trainerId);
+  if (!p) return;
+  const badgeColor = randomBadgeColor();
+  mockDB.upsertPerson(p, {
+    id: p.id,
+    organizationId: p.organizationId,
+    branchId,
+    role: "trainer",
+    fullName: p.fullName,
+    phone: p.phone,
+    avatarColor: badgeColor,
+    avatarUrl: p.avatarUrl,
+    bio: null,
+    badgeColor,
+  });
+}
+
 export async function createSession(input: CreateSessionInput): Promise<GymSession> {
+  await ensureTrainerRecordExists(input.trainerId, input.branchId);
+
   const dayStart = new Date(input.startsAt);
   dayStart.setHours(0, 0, 0, 0);
   const dayEnd = new Date(dayStart);

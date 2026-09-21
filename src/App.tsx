@@ -19,6 +19,7 @@ import { ReportsScreen } from "@/routes/ReportsScreen";
 import { TeamScreen } from "@/routes/TeamScreen";
 import { SettingsScreen } from "@/routes/SettingsScreen";
 import { ProfileScreen } from "@/routes/ProfileScreen";
+import { GuideScreen } from "@/routes/GuideScreen";
 import { Barbell } from "@phosphor-icons/react";
 
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -88,6 +89,7 @@ export default function App() {
         <Route path="/team" element={<TeamScreen />} />
         <Route path="/settings" element={<SettingsScreen />} />
         <Route path="/profile" element={<ProfileScreen />} />
+        <Route path="/rehber" element={<GuideScreen />} />
         <Route path="*" element={<Navigate to="/calendar" replace />} />
       </Route>
     </Routes>
