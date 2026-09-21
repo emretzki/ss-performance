@@ -1,9 +1,12 @@
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { useBranch } from "@/contexts/BranchContext";
-import { getTrainerStats, listSessions, listTrainers } from "@/lib/api";
+import { displayStatus, getTrainerStats, listSessions, listTrainers } from "@/lib/api";
+import { formatHourLabel } from "@/lib/calendarGrid";
 import { StatCard } from "@/components/ui/StatCard";
 import { EmptyState } from "@/components/ui/EmptyState";
+
+const UPCOMING_LIMIT = 6;
 
 export function OverviewScreen() {
   const { activeBranchId } = useBranch();
@@ -37,6 +40,15 @@ export function OverviewScreen() {
     return <EmptyState message="Bu şubede henüz PT kaydı yok." />;
   }
 
+  const now = new Date();
+  const upcoming = todaySessions
+    .filter((s) => s.status !== "cancelled" && displayStatus(s, now) !== "done")
+    .filter((s) => new Date(s.startsAt).getTime() + s.durationMin * 60_000 > now.getTime())
+    .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime())
+    .slice(0, UPCOMING_LIMIT);
+
+  const trainerById = (id: string) => trainers.find((t) => t.id === id);
+
   const busiestHour = (() => {
     const counts = new Map<number, number>();
     todaySessions.forEach((s) => {
@@ -67,6 +79,40 @@ export function OverviewScreen() {
           <StatCard label="Bugün toplam ders" value={todaySessions.length} />
           <StatCard label="En yoğun saat" value={busiestHour} />
           <StatCard label="Aktif PT" value={trainers.length} />
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <p className="text-[13px] font-medium text-[var(--color-ink-soft)]">Yaklaşan dersler</p>
+          {upcoming.length === 0 ? (
+            <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-6 text-center text-[13px] text-[var(--color-ash)]">
+              Bugün için kalan ders yok.
+            </div>
+          ) : (
+            <div className="flex flex-col divide-y divide-[var(--color-line)] rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)]">
+              {upcoming.map((s) => {
+                const trainer = trainerById(s.trainerId);
+                const start = new Date(s.startsAt);
+                const live = displayStatus(s, now) === "in_progress";
+                return (
+                  <Link key={s.id} to="/calendar" className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--color-surface-2)]">
+                    <p className="w-12 shrink-0 font-display text-[15px] font-bold tabular-nums text-[var(--color-ink)]">
+                      {formatHourLabel(start.getHours(), start.getMinutes())}
+                    </p>
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: trainer?.badgeColor ?? "var(--color-ash)" }} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[14px] font-medium text-[var(--color-ink)]">{trainer?.fullName ?? "Bilinmeyen PT"}</p>
+                      <p className="truncate text-[12px] text-[var(--color-ash)]">{s.memberName ?? "Üye belirtilmedi"} · {s.durationMin} dk</p>
+                    </div>
+                    {live && (
+                      <span className="shrink-0 rounded-full bg-[var(--color-gold-tint)] px-2 py-0.5 text-[10px] font-medium text-[var(--color-gold-deep)]">
+                        Devam ediyor
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col gap-2">
