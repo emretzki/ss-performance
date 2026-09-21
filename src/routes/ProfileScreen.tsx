@@ -44,7 +44,7 @@ export function ProfileScreen() {
         <button
           onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
-          className="group relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-full text-[24px] font-bold text-[var(--color-paper)]"
+          className="group relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-full text-[24px] font-bold text-[var(--color-ink)]"
           style={{ background: profile.avatarColor }}
           aria-label="Profil fotoğrafını değiştir"
         >

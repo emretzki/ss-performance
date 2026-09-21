@@ -108,7 +108,7 @@ export function ReportsScreen() {
               className={clsx(
                 "shrink-0 rounded-full border px-3 py-1.5 text-[13px] font-medium transition-colors duration-100",
                 showBranchTotal
-                  ? "border-[var(--color-gold-deep)] bg-[var(--color-gold)] text-[var(--color-paper)]"
+                  ? "border-[var(--color-gold-deep)] bg-[var(--color-gold)] text-[var(--color-ink)]"
                   : "border-[var(--color-line-strong)] text-[var(--color-ink-soft)]",
               )}
             >

@@ -34,7 +34,7 @@ export function SlotCell({ sessions, capacity, trainerVisual, workoutTypeColor, 
       className={clsx(
         "group relative flex w-full items-center justify-center gap-1 border-b border-r border-[var(--color-line)] px-1 transition-colors duration-100",
         "hover:bg-[var(--color-surface-2)] active:scale-[0.98]",
-        full && "bg-[repeating-linear-gradient(135deg,rgba(23,20,15,0.04)_0px,rgba(23,20,15,0.04)_1px,transparent_1px,transparent_8px)]",
+        full && "bg-[repeating-linear-gradient(135deg,rgba(242,245,239,0.05)_0px,rgba(242,245,239,0.05)_1px,transparent_1px,transparent_8px)]",
         isPast && "opacity-60",
       )}
       aria-label={full ? "Bu saat dolu" : "Ders eklemek için dokun"}
@@ -50,7 +50,7 @@ export function SlotCell({ sessions, capacity, trainerVisual, workoutTypeColor, 
             return (
               <span
                 key={s.id}
-                className="relative shrink-0 overflow-hidden rounded-full text-[9px] font-semibold text-[var(--color-paper)]"
+                className="relative shrink-0 overflow-hidden rounded-full text-[9px] font-semibold text-[var(--color-ink)]"
                 style={{ width: size, height: size, background: v.color, boxShadow: typeColor ? `0 0 0 2px ${typeColor}` : undefined }}
               >
                 {v.avatarUrl ? (

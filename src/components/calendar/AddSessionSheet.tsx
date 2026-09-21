@@ -90,7 +90,7 @@ export function AddSessionSheet({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center lg:items-center" role="dialog" aria-modal="true">
-      <div className="absolute inset-0 bg-[var(--color-ink)]/30 transition-opacity duration-200" onClick={onClose} />
+      <div className="absolute inset-0 bg-[var(--color-paper)]/72 transition-opacity duration-200" onClick={onClose} />
       <div
         className={clsx(
           "relative z-10 flex w-full flex-col gap-5 bg-[var(--color-surface)] p-5 shadow-[var(--shadow-float)] transition-transform duration-200",
