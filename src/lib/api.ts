@@ -1,6 +1,19 @@
 import { isSupabaseConfigured, supabase } from "./supabase";
 import { mockDB, subscribeMockDB } from "./mockStore";
-import { MAX_SESSIONS_PER_SLOT, PT_BADGE_COLORS, type Branch, type GymSession, type Member, type Profile, type Role, type Trainer } from "./types";
+import {
+  DEFAULT_MAX_SESSIONS_PER_SLOT,
+  LIVE_SESSION_AUTO_END_MIN,
+  PT_BADGE_COLORS,
+  type Branch,
+  type GymSession,
+  type Member,
+  type Organization,
+  type Profile,
+  type Role,
+  type SessionStatus,
+  type Trainer,
+  type WorkoutType,
+} from "./types";
 
 export class SlotFullError extends Error {
   nearestAvailable: string | null;
@@ -14,42 +27,227 @@ function overlaps(aStart: number, aEnd: number, bStart: number, bEnd: number) {
   return aStart < bEnd && bStart < aEnd;
 }
 
-export async function listBranches(): Promise<Branch[]> {
+/** A session left running past its 1-hour cap displays as done even before the cron job persists it. */
+export function displayStatus(session: GymSession, now: Date = new Date()): SessionStatus {
+  if (session.status === "in_progress" && session.startedAt) {
+    const startedMs = new Date(session.startedAt).getTime();
+    if (now.getTime() - startedMs >= LIVE_SESSION_AUTO_END_MIN * 60_000) return "done";
+  }
+  return session.status;
+}
+
+// ---------------------------------------------------------------------------
+// Organizations
+// ---------------------------------------------------------------------------
+
+export async function getMyOrganization(organizationId: string): Promise<Organization> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from("organizations").select("*").eq("id", organizationId).single();
+    if (error) throw error;
+    return {
+      id: data.id,
+      name: data.name,
+      logoUrl: data.logo_url,
+      accentColor: data.accent_color,
+      ownerAuthId: data.owner_auth_id,
+      createdAt: data.created_at,
+    };
+  }
+  const org = mockDB.get().organizations.find((o) => o.id === organizationId);
+  if (!org) throw new Error("Organizasyon bulunamadı.");
+  return org;
+}
+
+export async function updateOrganization(
+  id: string,
+  input: { name: string; accentColor: string; logoUrl: string | null },
+): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase
+      .from("organizations")
+      .update({ name: input.name, accent_color: input.accentColor, logo_url: input.logoUrl })
+      .eq("id", id);
+    if (error) throw error;
+    return;
+  }
+  mockDB.updateOrganization(id, { name: input.name, accentColor: input.accentColor, logoUrl: input.logoUrl });
+}
+
+export async function uploadOrgLogo(ownerAuthId: string, file: File): Promise<string> {
+  if (isSupabaseConfigured && supabase) {
+    const ext = file.name.split(".").pop() ?? "png";
+    const path = `${ownerAuthId}/logo.${ext}`;
+    const { error: uploadError } = await supabase.storage.from("org-logos").upload(path, file, { upsert: true });
+    if (uploadError) throw uploadError;
+    const { data } = supabase.storage.from("org-logos").getPublicUrl(path);
+    return `${data.publicUrl}?t=${Date.now()}`;
+  }
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+export interface CreateOrganizationInput {
+  email: string;
+  password: string;
+  fullName: string;
+  orgName: string;
+  logoBase64: string | null;
+  logoContentType: string | null;
+  accentColor: string;
+  branchAddress: string | null;
+}
+
+export async function createOrganization(input: CreateOrganizationInput): Promise<{ userId: string }> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.functions.invoke<{ userId: string; error?: string }>("create-organization", {
+      body: input,
+    });
+    if (error) throw error;
+    if (!data || data.error) throw new Error(data?.error ?? "Salon oluşturulamadı.");
+    return { userId: data.userId };
+  }
+
+  const orgId = `org${Date.now()}`;
+  const userId = `owner${Date.now()}`;
+  const branchId = `b${Date.now()}`;
+  const workoutTypeId = `wt${Date.now()}`;
+  const logoUrl = input.logoBase64 && input.logoContentType ? `data:${input.logoContentType};base64,${input.logoBase64}` : null;
+  mockDB.addOrganizationBundle(
+    { id: orgId, name: input.orgName, logoUrl, accentColor: input.accentColor, ownerAuthId: userId, createdAt: new Date().toISOString() },
+    { id: branchId, organizationId: orgId, name: input.orgName, address: input.branchAddress, maxConcurrentSessions: DEFAULT_MAX_SESSIONS_PER_SLOT, createdAt: new Date().toISOString() },
+    { id: userId, organizationId: orgId, branchId: null, role: "owner", fullName: input.fullName, phone: null, avatarColor: "var(--color-gold)" },
+    { id: workoutTypeId, organizationId: orgId, name: "Bire bir PT", color: input.accentColor, createdAt: new Date().toISOString() },
+  );
+  return { userId };
+}
+
+// ---------------------------------------------------------------------------
+// Branches
+// ---------------------------------------------------------------------------
+
+function mapBranch(r: Record<string, unknown>): Branch {
+  return {
+    id: r.id as string,
+    organizationId: r.organization_id as string,
+    name: r.name as string,
+    address: r.address as string | null,
+    maxConcurrentSessions: (r.max_concurrent_sessions as number) ?? DEFAULT_MAX_SESSIONS_PER_SLOT,
+    createdAt: r.created_at as string,
+  };
+}
+
+// organizationId is only used in mock mode (real Supabase scopes this via RLS
+// automatically), so tenants stay isolated in local/demo mode too.
+export async function listBranches(organizationId?: string): Promise<Branch[]> {
   if (isSupabaseConfigured && supabase) {
     const { data, error } = await supabase.from("branches").select("*").order("name");
     if (error) throw error;
-    return data.map((r) => ({ id: r.id, name: r.name, address: r.address, createdAt: r.created_at }));
+    return data.map(mapBranch);
   }
-  return mockDB.get().branches;
+  const all = mockDB.get().branches;
+  return organizationId ? all.filter((b) => b.organizationId === organizationId) : all;
 }
 
-export async function createBranch(input: { name: string; address: string | null }): Promise<Branch> {
+export async function createBranch(input: { organizationId: string; name: string; address: string | null }): Promise<Branch> {
   if (isSupabaseConfigured && supabase) {
-    const { data, error } = await supabase.from("branches").insert({ name: input.name, address: input.address }).select().single();
+    const { data, error } = await supabase
+      .from("branches")
+      .insert({ organization_id: input.organizationId, name: input.name, address: input.address })
+      .select()
+      .single();
     if (error) throw error;
-    return { id: data.id, name: data.name, address: data.address, createdAt: data.created_at };
+    return mapBranch(data);
   }
-  const branch: Branch = { id: `b${Date.now()}`, name: input.name, address: input.address, createdAt: new Date().toISOString() };
+  const branch: Branch = {
+    id: `b${Date.now()}`,
+    organizationId: input.organizationId,
+    name: input.name,
+    address: input.address,
+    maxConcurrentSessions: DEFAULT_MAX_SESSIONS_PER_SLOT,
+    createdAt: new Date().toISOString(),
+  };
   mockDB.addBranch(branch);
   return branch;
 }
+
+export async function updateBranch(
+  id: string,
+  input: { name: string; address: string | null; maxConcurrentSessions: number },
+): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase
+      .from("branches")
+      .update({ name: input.name, address: input.address, max_concurrent_sessions: input.maxConcurrentSessions })
+      .eq("id", id);
+    if (error) throw error;
+    return;
+  }
+  mockDB.updateBranch(id, input);
+}
+
+// ---------------------------------------------------------------------------
+// Workout types
+// ---------------------------------------------------------------------------
+
+export async function listWorkoutTypes(organizationId: string): Promise<WorkoutType[]> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from("workout_types").select("*").eq("organization_id", organizationId).order("name");
+    if (error) throw error;
+    return data.map((r) => ({ id: r.id, organizationId: r.organization_id, name: r.name, color: r.color, createdAt: r.created_at }));
+  }
+  return mockDB.get().workoutTypes.filter((w) => w.organizationId === organizationId);
+}
+
+export async function createWorkoutType(input: { organizationId: string; name: string; color: string }): Promise<WorkoutType> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from("workout_types")
+      .insert({ organization_id: input.organizationId, name: input.name, color: input.color })
+      .select()
+      .single();
+    if (error) throw error;
+    return { id: data.id, organizationId: data.organization_id, name: data.name, color: data.color, createdAt: data.created_at };
+  }
+  const wt: WorkoutType = { id: `wt${Date.now()}`, organizationId: input.organizationId, name: input.name, color: input.color, createdAt: new Date().toISOString() };
+  mockDB.addWorkoutType(wt);
+  return wt;
+}
+
+export async function deleteWorkoutType(id: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase.from("workout_types").delete().eq("id", id);
+    if (error) throw error;
+    return;
+  }
+  mockDB.deleteWorkoutType(id);
+}
+
+// ---------------------------------------------------------------------------
+// Trainers / people
+// ---------------------------------------------------------------------------
 
 export async function listTrainers(branchId: string): Promise<Trainer[]> {
   if (isSupabaseConfigured && supabase) {
     const { data, error } = await supabase
       .from("trainers")
-      .select("id, branch_id, bio, badge_color, profiles(full_name, phone)")
+      .select("id, branch_id, bio, badge_color, profiles(organization_id, full_name, phone, avatar_url)")
       .eq("branch_id", branchId);
     if (error) throw error;
     return data.map((r) => {
       const p = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles;
       return {
         id: r.id,
+        organizationId: p?.organization_id ?? "",
         branchId: r.branch_id,
         role: "trainer" as const,
         fullName: p?.full_name ?? "",
         phone: p?.phone ?? null,
         avatarColor: r.badge_color,
+        avatarUrl: p?.avatar_url ?? null,
         badgeColor: r.badge_color,
         bio: r.bio,
       };
@@ -65,6 +263,7 @@ export interface CreatePersonInput {
   phone: string | null;
   role: Extract<Role, "owner" | "trainer">;
   branchId: string;
+  organizationId: string;
 }
 
 export async function createPersonWithRole(input: CreatePersonInput): Promise<Profile> {
@@ -84,6 +283,7 @@ export async function createPersonWithRole(input: CreatePersonInput): Promise<Pr
 
     return {
       id: data.id,
+      organizationId: input.organizationId,
       branchId: input.branchId,
       role: input.role,
       fullName: input.fullName,
@@ -95,6 +295,7 @@ export async function createPersonWithRole(input: CreatePersonInput): Promise<Pr
   const id = `p${Date.now()}`;
   const profile: Profile = {
     id,
+    organizationId: input.organizationId,
     branchId: input.branchId,
     role: input.role,
     fullName: input.fullName,
@@ -112,6 +313,10 @@ export async function createPersonWithRole(input: CreatePersonInput): Promise<Pr
 function randomBadgeColor(): string {
   return PT_BADGE_COLORS[Math.floor(Math.random() * PT_BADGE_COLORS.length)];
 }
+
+// ---------------------------------------------------------------------------
+// Members
+// ---------------------------------------------------------------------------
 
 export async function listMembers(branchId: string): Promise<Member[]> {
   if (isSupabaseConfigured && supabase) {
@@ -144,6 +349,30 @@ export async function createMember(input: { branchId: string; fullName: string; 
   return member;
 }
 
+// ---------------------------------------------------------------------------
+// Sessions
+// ---------------------------------------------------------------------------
+
+function mapSession(r: Record<string, unknown>): GymSession {
+  return {
+    id: r.id as string,
+    branchId: r.branch_id as string,
+    trainerId: r.trainer_id as string,
+    memberId: r.member_id as string | null,
+    memberName: (r.member_name as string | null) ?? null,
+    title: r.title as string,
+    workoutTypeId: (r.workout_type_id as string | null) ?? null,
+    startsAt: r.starts_at as string,
+    durationMin: r.duration_min as number,
+    status: r.status as SessionStatus,
+    notes: (r.notes as string | null) ?? null,
+    startedAt: (r.started_at as string | null) ?? null,
+    endedAt: (r.ended_at as string | null) ?? null,
+    createdBy: r.created_by as string,
+    createdAt: r.created_at as string,
+  };
+}
+
 export async function listSessions(branchId: string, rangeStart: Date, rangeEnd: Date): Promise<GymSession[]> {
   if (isSupabaseConfigured && supabase) {
     const { data, error } = await supabase
@@ -153,20 +382,7 @@ export async function listSessions(branchId: string, rangeStart: Date, rangeEnd:
       .gte("starts_at", rangeStart.toISOString())
       .lt("starts_at", rangeEnd.toISOString());
     if (error) throw error;
-    return data.map((r) => ({
-      id: r.id,
-      branchId: r.branch_id,
-      trainerId: r.trainer_id,
-      memberId: r.member_id,
-      memberName: r.member_name ?? null,
-      title: r.title,
-      startsAt: r.starts_at,
-      durationMin: r.duration_min,
-      status: r.status,
-      notes: r.notes ?? null,
-      createdBy: r.created_by,
-      createdAt: r.created_at,
-    }));
+    return data.map(mapSession);
   }
   return mockDB
     .get()
@@ -178,6 +394,7 @@ export interface CreateSessionInput {
   trainerId: string;
   memberId: string | null;
   memberName: string | null;
+  workoutTypeId: string | null;
   startsAt: string;
   durationMin: number;
   notes: string | null;
@@ -202,13 +419,41 @@ export async function cancelSession(id: string): Promise<void> {
   mockDB.updateSession(id, { status: "cancelled" });
 }
 
+export async function startSession(id: string): Promise<void> {
+  const startedAt = new Date().toISOString();
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase.from("sessions").update({ status: "in_progress", started_at: startedAt }).eq("id", id);
+    if (error) throw error;
+    return;
+  }
+  mockDB.updateSession(id, { status: "in_progress", startedAt });
+}
+
+export async function endSession(id: string): Promise<void> {
+  const endedAt = new Date().toISOString();
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase.from("sessions").update({ status: "done", ended_at: endedAt }).eq("id", id);
+    if (error) throw error;
+    return;
+  }
+  mockDB.updateSession(id, { status: "done", endedAt });
+}
+
+async function getBranchCapacity(branchId: string): Promise<number> {
+  const branches = await listBranches();
+  return branches.find((b) => b.id === branchId)?.maxConcurrentSessions ?? DEFAULT_MAX_SESSIONS_PER_SLOT;
+}
+
 export async function createSession(input: CreateSessionInput): Promise<GymSession> {
   const dayStart = new Date(input.startsAt);
   dayStart.setHours(0, 0, 0, 0);
   const dayEnd = new Date(dayStart);
   dayEnd.setDate(dayEnd.getDate() + 1);
 
-  const existing = await listSessions(input.branchId, dayStart, dayEnd);
+  const [existing, capacity] = await Promise.all([
+    listSessions(input.branchId, dayStart, dayEnd),
+    getBranchCapacity(input.branchId),
+  ]);
   const newStart = new Date(input.startsAt).getTime();
   const newEnd = newStart + input.durationMin * 60_000;
 
@@ -219,8 +464,8 @@ export async function createSession(input: CreateSessionInput): Promise<GymSessi
     return overlaps(newStart, newEnd, sStart, sEnd);
   });
 
-  if (overlapping.length >= MAX_SESSIONS_PER_SLOT) {
-    throw new SlotFullError(findNearestAvailable(existing, newStart, input.durationMin));
+  if (overlapping.length >= capacity) {
+    throw new SlotFullError(findNearestAvailable(existing, newStart, input.durationMin, capacity));
   }
 
   if (isSupabaseConfigured && supabase) {
@@ -231,6 +476,7 @@ export async function createSession(input: CreateSessionInput): Promise<GymSessi
         trainer_id: input.trainerId,
         member_id: input.memberId,
         member_name: input.memberName,
+        workout_type_id: input.workoutTypeId,
         title: "Bire bir PT",
         starts_at: input.startsAt,
         duration_min: input.durationMin,
@@ -242,24 +488,11 @@ export async function createSession(input: CreateSessionInput): Promise<GymSessi
       .single();
     if (error) {
       if (error.message.toLowerCase().includes("capacity")) {
-        throw new SlotFullError(findNearestAvailable(existing, newStart, input.durationMin));
+        throw new SlotFullError(findNearestAvailable(existing, newStart, input.durationMin, capacity));
       }
       throw error;
     }
-    return {
-      id: data.id,
-      branchId: data.branch_id,
-      trainerId: data.trainer_id,
-      memberId: data.member_id,
-      memberName: data.member_name,
-      title: data.title,
-      startsAt: data.starts_at,
-      durationMin: data.duration_min,
-      status: data.status,
-      notes: data.notes ?? null,
-      createdBy: data.created_by,
-      createdAt: data.created_at,
-    };
+    return mapSession(data);
   }
 
   const session: GymSession = {
@@ -269,10 +502,13 @@ export async function createSession(input: CreateSessionInput): Promise<GymSessi
     memberId: input.memberId,
     memberName: input.memberName,
     title: "Bire bir PT",
+    workoutTypeId: input.workoutTypeId,
     startsAt: input.startsAt,
     durationMin: input.durationMin,
     status: "scheduled",
     notes: input.notes,
+    startedAt: null,
+    endedAt: null,
     createdBy: input.createdBy,
     createdAt: new Date().toISOString(),
   };
@@ -280,7 +516,7 @@ export async function createSession(input: CreateSessionInput): Promise<GymSessi
   return session;
 }
 
-function findNearestAvailable(daySessions: GymSession[], fromMs: number, durationMin: number): string | null {
+function findNearestAvailable(daySessions: GymSession[], fromMs: number, durationMin: number, capacity: number): string | null {
   const durationMs = durationMin * 60_000;
   for (let candidate = fromMs + 30 * 60_000; candidate < fromMs + 8 * 60 * 60_000; candidate += 30 * 60_000) {
     const candidateEnd = candidate + durationMs;
@@ -290,7 +526,7 @@ function findNearestAvailable(daySessions: GymSession[], fromMs: number, duratio
       const sEnd = sStart + s.durationMin * 60_000;
       return overlaps(candidate, candidateEnd, sStart, sEnd);
     }).length;
-    if (count < MAX_SESSIONS_PER_SLOT) return new Date(candidate).toISOString();
+    if (count < capacity) return new Date(candidate).toISOString();
   }
   return null;
 }
@@ -309,6 +545,10 @@ export function subscribeToSessions(branchId: string, onChange: () => void): () 
   return subscribeMockDB(onChange);
 }
 
+// ---------------------------------------------------------------------------
+// Reports
+// ---------------------------------------------------------------------------
+
 export interface TrainerStats {
   trainerId: string;
   thisWeek: number;
@@ -316,6 +556,7 @@ export interface TrainerStats {
   thisMonth: number;
   lastMonth: number;
   byDay: { date: string; count: number }[];
+  byWorkoutType: { workoutTypeId: string; count: number }[];
 }
 
 export async function getTrainerStats(branchId: string, trainerId: string): Promise<TrainerStats> {
@@ -341,6 +582,12 @@ export async function getTrainerStats(branchId: string, trainerId: string): Prom
     byDay.push({ date: d.toISOString(), count: count(d, next) });
   }
 
+  const byTypeMap = new Map<string, number>();
+  for (const s of done.filter((s) => new Date(s.startsAt) >= monthStart)) {
+    if (!s.workoutTypeId) continue;
+    byTypeMap.set(s.workoutTypeId, (byTypeMap.get(s.workoutTypeId) ?? 0) + 1);
+  }
+
   return {
     trainerId,
     thisWeek: count(weekStart, new Date(weekStart.getTime() + 7 * 86400000)),
@@ -348,6 +595,7 @@ export async function getTrainerStats(branchId: string, trainerId: string): Prom
     thisMonth: count(monthStart, new Date(now.getFullYear(), now.getMonth() + 1, 1)),
     lastMonth: count(lastMonthStart, monthStart),
     byDay,
+    byWorkoutType: [...byTypeMap.entries()].map(([workoutTypeId, count]) => ({ workoutTypeId, count })),
   };
 }
 

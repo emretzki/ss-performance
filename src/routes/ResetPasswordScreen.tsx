@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from "react";
+import { Barbell } from "@phosphor-icons/react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/Button";
-import logo from "@/assets/logo.webp";
 
 export function ResetPasswordScreen() {
   const { clearPasswordRecovery } = useAuth();
@@ -37,7 +37,7 @@ export function ResetPasswordScreen() {
     return (
       <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-[var(--color-paper)] px-6 py-10 text-center">
         <div className="flex w-full max-w-sm flex-col items-center gap-4">
-          <img src={logo} alt="SportScience" className="h-20 w-20 object-contain" />
+          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--color-ink)] text-[var(--color-paper)]"><Barbell size={26} weight="fill" /></span>
           <h1 className="font-display text-[22px] font-bold text-[var(--color-ink)]">Şifre güncellendi</h1>
           <p className="text-[13px] text-[var(--color-ash)]">Artık yeni şifrenle giriş yapabilirsin.</p>
           <Button size="lg" onClick={() => clearPasswordRecovery()} className="mt-2 w-full">
@@ -51,7 +51,7 @@ export function ResetPasswordScreen() {
   return (
     <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-[var(--color-paper)] px-6 py-10">
       <div className="flex w-full max-w-sm flex-col items-center gap-6">
-        <img src={logo} alt="SportScience" className="h-20 w-20 object-contain" />
+        <span className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--color-ink)] text-[var(--color-paper)]"><Barbell size={26} weight="fill" /></span>
         <div className="text-center">
           <h1 className="font-display text-[22px] font-bold leading-none text-[var(--color-ink)]">Yeni şifre belirle</h1>
           <p className="mt-1.5 text-[13px] text-[var(--color-ash)]">Bu hesap için yeni bir şifre gir.</p>

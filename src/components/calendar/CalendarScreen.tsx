@@ -3,9 +3,9 @@ import { useNavigate as useRouterNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBranch } from "@/contexts/BranchContext";
-import { listMembers, listSessions, listTrainers, subscribeToSessions } from "@/lib/api";
+import { listMembers, listSessions, listTrainers, listWorkoutTypes, subscribeToSessions } from "@/lib/api";
 import { startOfWeek, weekDays, isSameDay, type ZoomLevel } from "@/lib/calendarGrid";
-import type { GymSession } from "@/lib/types";
+import { DEFAULT_MAX_SESSIONS_PER_SLOT, type GymSession } from "@/lib/types";
 import { CalendarToolbar, type CalendarView } from "./CalendarToolbar";
 import { TrainerFilterChips } from "./TrainerFilterChips";
 import { TimeGrid } from "./TimeGrid";
@@ -14,6 +14,7 @@ import { ManageSessionSheet } from "./ManageSessionSheet";
 import { SlotDetailsPanel } from "./SlotDetailsPanel";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useIsDesktop } from "@/hooks/useMediaQuery";
+import type { TrainerVisual } from "./SlotCell";
 
 const ZOOM_KEY = "sportscience-calendar-zoom";
 
@@ -47,6 +48,9 @@ export function CalendarScreen() {
     return d;
   }, [rangeStart, view]);
 
+  const activeBranch = branches.find((b) => b.id === activeBranchId);
+  const capacity = activeBranch?.maxConcurrentSessions ?? DEFAULT_MAX_SESSIONS_PER_SLOT;
+
   const { data: trainers = [] } = useQuery({
     queryKey: ["trainers", activeBranchId],
     queryFn: () => listTrainers(activeBranchId as string),
@@ -57,6 +61,12 @@ export function CalendarScreen() {
     queryKey: ["members", activeBranchId],
     queryFn: () => listMembers(activeBranchId as string),
     enabled: Boolean(activeBranchId),
+  });
+
+  const { data: workoutTypes = [] } = useQuery({
+    queryKey: ["workout-types", profile?.organizationId],
+    queryFn: () => listWorkoutTypes(profile!.organizationId),
+    enabled: Boolean(profile?.organizationId),
   });
 
   const sessionsQueryKey = ["sessions", activeBranchId, rangeStart.toISOString(), rangeEnd.toISOString()];
@@ -76,10 +86,18 @@ export function CalendarScreen() {
   const activeTrainerIds = selectedTrainerIds ?? new Set(trainers.map((t) => t.id));
   const filteredSessions = sessions.filter((s) => activeTrainerIds.has(s.trainerId));
 
-  const trainerColor = (trainerId: string) => {
-    if (trainerId === profile?.id) return "var(--color-gold)";
-    return trainers.find((t) => t.id === trainerId)?.badgeColor ?? "var(--color-ash)";
+  const trainerVisual = (trainerId: string): TrainerVisual => {
+    const t = trainers.find((tr) => tr.id === trainerId);
+    const isSelf = trainerId === profile?.id;
+    return {
+      initial: t?.fullName?.charAt(0)?.toUpperCase() ?? "?",
+      color: isSelf ? "var(--color-gold)" : (t?.badgeColor ?? "var(--color-ash)"),
+      avatarUrl: t?.avatarUrl ?? null,
+    };
   };
+
+  const workoutTypeColor = (workoutTypeId: string | null): string | null =>
+    workoutTypeId ? (workoutTypes.find((w) => w.id === workoutTypeId)?.color ?? null) : null;
 
   function navigate(delta: number) {
     const d = new Date(anchorDate);
@@ -164,7 +182,9 @@ export function CalendarScreen() {
           days={days}
           sessions={filteredSessions}
           zoom={zoom}
-          trainerColor={trainerColor}
+          capacity={capacity}
+          trainerVisual={trainerVisual}
+          workoutTypeColor={workoutTypeColor}
           onSlotClick={handleSlotClick}
           showDayHeaders={view === "week" || isDesktop}
         />
@@ -182,6 +202,7 @@ export function CalendarScreen() {
                 hour={selectedSlot.hour}
                 minute={selectedSlot.minute}
                 session={ownSession}
+                workoutTypes={workoutTypes}
                 onClose={() => setSelectedSlot(null)}
                 onChanged={() => qc.invalidateQueries({ queryKey: ["sessions", activeBranchId] })}
               />
@@ -194,8 +215,10 @@ export function CalendarScreen() {
               minute={selectedSlot.minute}
               existingSessions={selectedSlot.sessions}
               members={members}
+              workoutTypes={workoutTypes}
               profile={profile}
               branchId={activeBranchId}
+              capacity={capacity}
               onClose={() => setSelectedSlot(null)}
               onCreated={() => qc.invalidateQueries({ queryKey: ["sessions", activeBranchId] })}
               onJumpTo={handleJumpTo}
@@ -210,6 +233,7 @@ export function CalendarScreen() {
           minute={selectedSlot.minute}
           sessions={selectedSlot.sessions}
           trainers={trainers}
+          workoutTypes={workoutTypes}
           onClose={() => setSelectedSlot(null)}
         />
       )}

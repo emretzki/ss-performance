@@ -3,7 +3,7 @@
 //
 // Called from the app as: supabase.functions.invoke('create-person', { body: {...} })
 // The caller's own session JWT is forwarded automatically; we re-check their
-// role server-side before doing anything privileged.
+// role and organization server-side before doing anything privileged.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -45,7 +45,11 @@ Deno.serve(async (req) => {
       return json({ error: "Oturum bulunamadı." }, 401);
     }
 
-    const { data: callerProfile } = await callerClient.from("profiles").select("role, branch_id").eq("id", caller.id).single();
+    const { data: callerProfile } = await callerClient
+      .from("profiles")
+      .select("role, organization_id")
+      .eq("id", caller.id)
+      .single();
 
     if (!callerProfile || (callerProfile.role !== "super_admin" && callerProfile.role !== "owner")) {
       return json({ error: "Bu işlem için yetkin yok." }, 403);
@@ -53,16 +57,15 @@ Deno.serve(async (req) => {
 
     const body = (await req.json()) as RequestBody;
 
-    if (callerProfile.role === "owner" && body.branchId !== callerProfile.branch_id) {
-      return json({ error: "Sadece kendi şubene kişi ekleyebilirsin." }, 403);
+    const adminClient = createClient(supabaseUrl, serviceRoleKey);
+
+    const { data: targetBranch } = await adminClient.from("branches").select("organization_id").eq("id", body.branchId).single();
+    if (!targetBranch || targetBranch.organization_id !== callerProfile.organization_id) {
+      return json({ error: "Bu şube senin organizasyonuna ait değil." }, 403);
     }
     if (callerProfile.role === "owner" && body.role !== "trainer") {
       return json({ error: "Şube sahibi sadece PT ekleyebilir." }, 403);
     }
-
-    // Admin client with the service-role key: only reachable from inside this
-    // function, never from the browser.
-    const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
     const { data: created, error: createError } = await adminClient.auth.admin.createUser({
       email: body.email,
@@ -75,6 +78,7 @@ Deno.serve(async (req) => {
 
     const { error: profileError } = await adminClient.from("profiles").insert({
       id: created.user.id,
+      organization_id: callerProfile.organization_id,
       branch_id: body.branchId,
       role: body.role,
       full_name: body.fullName,

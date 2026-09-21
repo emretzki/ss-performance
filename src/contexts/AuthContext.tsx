@@ -49,6 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setAuthError(null);
         setProfile({
           id: p.id,
+          organizationId: p.organization_id,
           branchId: p.branch_id,
           role: p.role,
           fullName: p.full_name,

@@ -1,10 +1,10 @@
 import { useState, type FormEvent } from "react";
-import { Navigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
+import { Barbell } from "@phosphor-icons/react";
 import { useAuth } from "@/contexts/AuthContext";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { mockDB } from "@/lib/mockStore";
 import { Button } from "@/components/ui/Button";
-import logo from "@/assets/logo.webp";
 
 export function LoginScreen() {
   const { profile, signInMock, authError } = useAuth();
@@ -52,15 +52,18 @@ export function LoginScreen() {
   }
 
   const demoProfiles = mockDB.get().profiles;
+  const demoOrgs = mockDB.get().organizations;
 
   return (
     <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-[var(--color-paper)] px-6 py-10">
       <div className="flex w-full max-w-sm flex-col items-center gap-6">
-        <img src={logo} alt="SportScience" className="h-24 w-24 object-contain" />
+        <span className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--color-ink)] text-[var(--color-paper)]">
+          <Barbell size={28} weight="fill" />
+        </span>
 
         <div className="text-center">
-          <h1 className="font-display text-[26px] font-bold leading-none text-[var(--color-ink)]">SportScience</h1>
-          <p className="mt-1.5 text-[13px] text-[var(--color-ash)]">Performance &amp; Coaching · Yönetim Paneli</p>
+          <h1 className="font-display text-[26px] font-bold leading-none text-[var(--color-ink)]">Salon Yönetim Paneli</h1>
+          <p className="mt-1.5 text-[13px] text-[var(--color-ash)]">Şubeni, ekibini ve dersleri tek yerden yönet.</p>
         </div>
 
         {isSupabaseConfigured && mode === "forgot-sent" ? (
@@ -138,6 +141,9 @@ export function LoginScreen() {
             <Button type="submit" size="lg" disabled={loading} className="mt-2">
               {loading ? "Giriş yapılıyor..." : "Giriş yap"}
             </Button>
+            <Link to="/signup" className="text-center text-[13px] font-medium text-[var(--color-ink-soft)]">
+              Yeni salon oluştur
+            </Link>
           </form>
         ) : (
           <div className="flex w-full flex-col gap-3">
@@ -155,12 +161,16 @@ export function LoginScreen() {
                   <span className="flex-1">
                     <span className="block text-[14px] font-medium text-[var(--color-ink)]">{p.fullName}</span>
                     <span className="block text-[12px] text-[var(--color-ash)]">
-                      {p.role === "super_admin" ? "Süper admin" : p.role === "owner" ? "Şube sahibi" : "PT"}
+                      {p.role === "super_admin" ? "Süper admin" : p.role === "owner" ? "Şube sahibi" : "PT"} ·{" "}
+                      {demoOrgs.find((o) => o.id === p.organizationId)?.name}
                     </span>
                   </span>
                 </button>
               ))}
             </div>
+            <Link to="/signup" className="text-center text-[13px] font-medium text-[var(--color-ink-soft)]">
+              Yeni salon oluştur (mock)
+            </Link>
           </div>
         )}
       </div>

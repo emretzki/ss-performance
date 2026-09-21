@@ -6,7 +6,7 @@ import { useIsDesktop } from "@/hooks/useMediaQuery";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
 import { createSession, SlotFullError } from "@/lib/api";
 import { formatHourLabel } from "@/lib/calendarGrid";
-import type { GymSession, Member, Profile } from "@/lib/types";
+import type { GymSession, Member, Profile, WorkoutType } from "@/lib/types";
 
 interface AddSessionSheetProps {
   day: Date;
@@ -14,8 +14,10 @@ interface AddSessionSheetProps {
   minute: number;
   existingSessions: GymSession[];
   members: Member[];
+  workoutTypes: WorkoutType[];
   profile: Profile;
   branchId: string;
+  capacity: number;
   onClose: () => void;
   onCreated: () => void;
   onJumpTo: (iso: string) => void;
@@ -23,12 +25,26 @@ interface AddSessionSheetProps {
 
 const DURATIONS = [30, 45, 60, 90];
 
-export function AddSessionSheet({ day, hour, minute, existingSessions, members, profile, branchId, onClose, onCreated, onJumpTo }: AddSessionSheetProps) {
+export function AddSessionSheet({
+  day,
+  hour,
+  minute,
+  existingSessions,
+  members,
+  workoutTypes,
+  profile,
+  branchId,
+  capacity,
+  onClose,
+  onCreated,
+  onJumpTo,
+}: AddSessionSheetProps) {
   const isDesktop = useIsDesktop();
   useEscapeClose(onClose);
   const [duration, setDuration] = useState(60);
   const [memberId, setMemberId] = useState<string | null>(null);
   const [memberQuery, setMemberQuery] = useState("");
+  const [workoutTypeId, setWorkoutTypeId] = useState<string | null>(workoutTypes[0]?.id ?? null);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,7 +52,7 @@ export function AddSessionSheet({ day, hour, minute, existingSessions, members, 
 
   const slotDate = new Date(day);
   slotDate.setHours(hour, minute, 0, 0);
-  const full = existingSessions.filter((s) => s.status !== "cancelled").length >= 3;
+  const full = existingSessions.filter((s) => s.status !== "cancelled").length >= capacity;
 
   const filteredMembers = memberQuery.trim()
     ? members.filter((m) => m.fullName.toLowerCase().includes(memberQuery.trim().toLowerCase()))
@@ -52,6 +68,7 @@ export function AddSessionSheet({ day, hour, minute, existingSessions, members, 
         trainerId: profile.id,
         memberId: member?.id ?? null,
         memberName: member?.fullName ?? null,
+        workoutTypeId,
         startsAt: slotDate.toISOString(),
         durationMin: duration,
         notes: notes.trim() || null,
@@ -93,7 +110,7 @@ export function AddSessionSheet({ day, hour, minute, existingSessions, members, 
         {full ? (
           <div className="flex flex-col gap-4">
             <p className="text-[14px] text-[var(--color-ink)]">
-              Bu saat dolu <span className="text-[var(--color-ash)]">(3/3)</span>. Aynı anda en fazla 3 ders yapılabiliyor.
+              Bu saat dolu <span className="text-[var(--color-ash)]">({capacity}/{capacity})</span>. Aynı anda en fazla {capacity} ders yapılabiliyor.
             </p>
             <Button
               variant="secondary"
@@ -126,6 +143,29 @@ export function AddSessionSheet({ day, hour, minute, existingSessions, members, 
                 ))}
               </div>
             </div>
+
+            {workoutTypes.length > 0 && (
+              <div>
+                <p className="mb-2 text-[13px] font-medium text-[var(--color-ink-soft)]">İdman türü</p>
+                <div className="flex flex-wrap gap-2">
+                  {workoutTypes.map((wt) => (
+                    <button
+                      key={wt.id}
+                      onClick={() => setWorkoutTypeId(wt.id)}
+                      className={clsx(
+                        "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] font-medium transition-colors duration-100",
+                        workoutTypeId === wt.id
+                          ? "border-[var(--color-ink)] bg-[var(--color-ink)] text-[var(--color-paper)]"
+                          : "border-[var(--color-line-strong)] text-[var(--color-ink-soft)]",
+                      )}
+                    >
+                      <span className="h-2 w-2 rounded-full" style={{ background: workoutTypeId === wt.id ? "currentColor" : wt.color }} />
+                      {wt.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div>
               <p className="mb-2 text-[13px] font-medium text-[var(--color-ink-soft)]">Üye (opsiyonel)</p>

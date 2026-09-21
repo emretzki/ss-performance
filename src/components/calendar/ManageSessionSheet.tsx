@@ -4,26 +4,37 @@ import { X } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/Button";
 import { useIsDesktop } from "@/hooks/useMediaQuery";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
-import { cancelSession, updateSessionNote } from "@/lib/api";
+import { cancelSession, displayStatus, endSession, startSession, updateSessionNote } from "@/lib/api";
 import { formatHourLabel } from "@/lib/calendarGrid";
-import type { GymSession } from "@/lib/types";
+import type { GymSession, WorkoutType } from "@/lib/types";
 
 interface ManageSessionSheetProps {
   day: Date;
   hour: number;
   minute: number;
   session: GymSession;
+  workoutTypes: WorkoutType[];
   onClose: () => void;
   onChanged: () => void;
 }
 
-export function ManageSessionSheet({ day, hour, minute, session, onClose, onChanged }: ManageSessionSheetProps) {
+const STATUS_LABEL: Record<string, string> = {
+  scheduled: "Planlandı",
+  in_progress: "Devam ediyor",
+  done: "Tamamlandı",
+  cancelled: "İptal edildi",
+};
+
+export function ManageSessionSheet({ day, hour, minute, session, workoutTypes, onClose, onChanged }: ManageSessionSheetProps) {
   const isDesktop = useIsDesktop();
   useEscapeClose(onClose);
   const [notes, setNotes] = useState(session.notes ?? "");
   const [saving, setSaving] = useState(false);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const status = displayStatus(session);
+  const workoutType = workoutTypes.find((w) => w.id === session.workoutTypeId);
 
   async function handleSaveNote() {
     setSaving(true);
@@ -53,6 +64,33 @@ export function ManageSessionSheet({ day, hour, minute, session, onClose, onChan
     }
   }
 
+  async function handleStart() {
+    setSaving(true);
+    setError(null);
+    try {
+      await startSession(session.id);
+      onChanged();
+    } catch {
+      setError("Ders başlatılamadı, tekrar dene.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleEnd() {
+    setSaving(true);
+    setError(null);
+    try {
+      await endSession(session.id);
+      onChanged();
+      onClose();
+    } catch {
+      setError("Ders bitirilemedi, tekrar dene.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center lg:items-center" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-[var(--color-ink)]/30 transition-opacity duration-200" onClick={onClose} />
@@ -64,9 +102,22 @@ export function ManageSessionSheet({ day, hour, minute, session, onClose, onChan
       >
         <div className="flex items-center justify-between">
           <div>
-            <p className="font-display text-[22px] font-bold leading-none tabular-nums">{formatHourLabel(hour, minute)}</p>
+            <div className="flex items-center gap-2">
+              <p className="font-display text-[22px] font-bold leading-none tabular-nums">{formatHourLabel(hour, minute)}</p>
+              <span
+                className={clsx(
+                  "rounded-full px-2 py-0.5 text-[11px] font-medium",
+                  status === "in_progress" && "bg-[var(--color-gold-tint)] text-[var(--color-gold-deep)]",
+                  status === "done" && "bg-[var(--color-surface-2)] text-[var(--color-ash)]",
+                  status === "scheduled" && "border border-[var(--color-line-strong)] text-[var(--color-ink-soft)]",
+                )}
+              >
+                {STATUS_LABEL[status]}
+              </span>
+            </div>
             <p className="mt-1 text-[13px] text-[var(--color-ash)]">
               {day.toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" })} · {session.durationMin} dk
+              {workoutType ? ` · ${workoutType.name}` : ""}
               {session.memberName ? ` · ${session.memberName}` : ""}
             </p>
           </div>
@@ -92,6 +143,15 @@ export function ManageSessionSheet({ day, hour, minute, session, onClose, onChan
           </div>
         ) : (
           <>
+            {status !== "done" && (
+              <Button size="lg" onClick={status === "in_progress" ? handleEnd : handleStart} disabled={saving}>
+                {saving ? "İşleniyor..." : status === "in_progress" ? "Dersi Bitir" : "Dersi Başlat"}
+              </Button>
+            )}
+            {status === "in_progress" && (
+              <p className="-mt-3 text-[12px] text-[var(--color-ash)]">Bitirmezsen 1 saat sonunda otomatik tamamlanır.</p>
+            )}
+
             <div>
               <label className="mb-1.5 block text-[13px] font-medium text-[var(--color-ink-soft)]">Not</label>
               <textarea
@@ -106,15 +166,14 @@ export function ManageSessionSheet({ day, hour, minute, session, onClose, onChan
             {error && <p className="text-[13px] text-[var(--color-danger)]">{error}</p>}
 
             <div className="flex flex-col gap-2">
-              <Button size="lg" onClick={handleSaveNote} disabled={saving}>
+              <Button variant="secondary" size="lg" onClick={handleSaveNote} disabled={saving}>
                 {saving ? "Kaydediliyor..." : "Notu kaydet"}
               </Button>
-              <button
-                onClick={() => setConfirmingCancel(true)}
-                className="h-10 text-[13px] font-medium text-[var(--color-danger)]"
-              >
-                Dersi iptal et
-              </button>
+              {status !== "done" && (
+                <button onClick={() => setConfirmingCancel(true)} className="h-10 text-[13px] font-medium text-[var(--color-danger)]">
+                  Dersi iptal et
+                </button>
+              )}
             </div>
           </>
         )}

@@ -13,14 +13,19 @@ interface BranchContextValue {
 
 const BranchContext = createContext<BranchContextValue | null>(null);
 
-const STORAGE_KEY = "sportscience-active-branch";
+const STORAGE_PREFIX = "active-branch:";
 
 export function BranchProvider({ children }: { children: ReactNode }) {
   const { profile } = useAuth();
-  const { data: branches = [] } = useQuery({ queryKey: ["branches"], queryFn: listBranches });
+  const { data: branches = [] } = useQuery({
+    queryKey: ["branches", profile?.organizationId],
+    queryFn: () => listBranches(profile?.organizationId),
+    enabled: Boolean(profile),
+  });
   const [activeBranchId, setActiveBranchIdState] = useState<string | null>(null);
 
-  const canSwitchBranch = profile?.role === "super_admin";
+  const canSwitchBranch = profile?.role === "super_admin" || profile?.role === "owner";
+  const storageKey = profile ? `${STORAGE_PREFIX}${profile.id}` : null;
 
   useEffect(() => {
     if (!profile) return;
@@ -28,16 +33,21 @@ export function BranchProvider({ children }: { children: ReactNode }) {
       setActiveBranchIdState(profile.branchId);
       return;
     }
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
+    // Only trust a stored branch id if it actually belongs to THIS user's
+    // (org-scoped) branch list — otherwise a stale value from a previously
+    // signed-in account on the same browser could leak across tenants.
+    const stored = storageKey ? localStorage.getItem(storageKey) : null;
+    if (stored && branches.some((b) => b.id === stored)) {
       setActiveBranchIdState(stored);
     } else if (branches.length > 0) {
       setActiveBranchIdState(branches[0].id);
+    } else {
+      setActiveBranchIdState(null);
     }
-  }, [profile, canSwitchBranch, branches]);
+  }, [profile, canSwitchBranch, branches, storageKey]);
 
   const setActiveBranchId = (id: string) => {
-    localStorage.setItem(STORAGE_KEY, id);
+    if (storageKey) localStorage.setItem(storageKey, id);
     setActiveBranchIdState(id);
   };
 

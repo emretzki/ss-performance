@@ -8,6 +8,7 @@ const inputClass =
   "h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-line-strong)] bg-[var(--color-surface)] px-3 text-[14px] text-[var(--color-ink)] focus:border-[var(--color-gold)]";
 
 interface AddPersonFormProps {
+  organizationId: string;
   branches: Branch[];
   defaultBranchId: string;
   canChooseRole: boolean;
@@ -22,7 +23,7 @@ function randomPassword(): string {
   return out;
 }
 
-export function AddPersonForm({ branches, defaultBranchId, canChooseRole, onClose, onCreated }: AddPersonFormProps) {
+export function AddPersonForm({ organizationId, branches, defaultBranchId, canChooseRole, onClose, onCreated }: AddPersonFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState(randomPassword);
   const [fullName, setFullName] = useState("");
@@ -41,7 +42,7 @@ export function AddPersonForm({ branches, defaultBranchId, canChooseRole, onClos
     setSaving(true);
     setError(null);
     try {
-      await createPersonWithRole({ email: email.trim(), password, fullName: fullName.trim(), phone: phone.trim() || null, role, branchId });
+      await createPersonWithRole({ email: email.trim(), password, fullName: fullName.trim(), phone: phone.trim() || null, role, branchId, organizationId });
       onCreated();
       setCreated({ email: email.trim(), password });
     } catch (e) {

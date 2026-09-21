@@ -1,14 +1,26 @@
 export type Role = "super_admin" | "owner" | "trainer";
 
-export interface Branch {
+export interface Organization {
   id: string;
   name: string;
+  logoUrl: string | null;
+  accentColor: string;
+  ownerAuthId: string;
+  createdAt: string;
+}
+
+export interface Branch {
+  id: string;
+  organizationId: string;
+  name: string;
   address: string | null;
+  maxConcurrentSessions: number;
   createdAt: string;
 }
 
 export interface Profile {
   id: string;
+  organizationId: string;
   branchId: string | null;
   role: Role;
   fullName: string;
@@ -33,7 +45,15 @@ export interface Member {
   createdAt: string;
 }
 
-export type SessionStatus = "scheduled" | "done" | "cancelled";
+export interface WorkoutType {
+  id: string;
+  organizationId: string;
+  name: string;
+  color: string;
+  createdAt: string;
+}
+
+export type SessionStatus = "scheduled" | "in_progress" | "done" | "cancelled";
 
 export interface GymSession {
   id: string;
@@ -42,16 +62,20 @@ export interface GymSession {
   memberId: string | null;
   memberName: string | null;
   title: string;
+  workoutTypeId: string | null;
   startsAt: string; // ISO
   durationMin: number;
   status: SessionStatus;
   notes: string | null;
+  startedAt: string | null;
+  endedAt: string | null;
   createdBy: string;
   createdAt: string;
 }
 
 export const SLOT_MINUTES = 30;
-export const MAX_SESSIONS_PER_SLOT = 3;
+export const DEFAULT_MAX_SESSIONS_PER_SLOT = 3;
+export const LIVE_SESSION_AUTO_END_MIN = 60;
 
 export const PT_BADGE_COLORS = [
   "var(--color-pt-clay)",

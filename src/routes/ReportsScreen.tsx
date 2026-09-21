@@ -3,7 +3,7 @@ import { useQueries, useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBranch } from "@/contexts/BranchContext";
-import { getTrainerStats, listTrainers } from "@/lib/api";
+import { getTrainerStats, listTrainers, listWorkoutTypes } from "@/lib/api";
 import { StatCard } from "@/components/ui/StatCard";
 import { WeekBars } from "@/components/ui/WeekBars";
 import clsx from "clsx";
@@ -45,6 +45,12 @@ export function ReportsScreen() {
     enabled: Boolean(activeBranchId && trainerId),
   });
 
+  const { data: workoutTypes = [] } = useQuery({
+    queryKey: ["workout-types", profile?.organizationId],
+    queryFn: () => listWorkoutTypes(profile!.organizationId),
+    enabled: Boolean(profile?.organizationId),
+  });
+
   const allStatsQueries = useQueries({
     queries: trainers.map((t) => ({
       queryKey: ["trainer-stats", activeBranchId, t.id],
@@ -64,6 +70,11 @@ export function ReportsScreen() {
           q.data.byDay.forEach((d, i) => {
             acc.byDay[i].count += d.count;
           });
+          q.data.byWorkoutType.forEach((wt) => {
+            const existing = acc.byWorkoutType.find((e) => e.workoutTypeId === wt.workoutTypeId);
+            if (existing) existing.count += wt.count;
+            else acc.byWorkoutType.push({ ...wt });
+          });
           return acc;
         },
         {
@@ -72,11 +83,13 @@ export function ReportsScreen() {
           thisMonth: 0,
           lastMonth: 0,
           byDay: last7Days(),
+          byWorkoutType: [] as { workoutTypeId: string; count: number }[],
         },
       )
     : null;
 
   const shown = showBranchTotal ? branchTotal : stats;
+  const maxTypeCount = Math.max(1, ...(shown?.byWorkoutType.map((w) => w.count) ?? [0]));
 
   return (
     <div className="flex-1 overflow-y-auto p-4 lg:p-6">
@@ -128,6 +141,30 @@ export function ReportsScreen() {
             <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] p-4">
               <p className="mb-4 text-[13px] font-medium text-[var(--color-ink-soft)]">Son 7 gün</p>
               <WeekBars byDay={shown.byDay} />
+            </div>
+
+            <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] p-4">
+              <p className="mb-1 text-[13px] font-medium text-[var(--color-ink-soft)]">Bu ay idman türüne göre</p>
+              <p className="mb-4 text-[12px] text-[var(--color-ash)]">Hangi türe az ders giriliyor, nereye yatırım gerekebilir görürsün.</p>
+              {workoutTypes.length === 0 || shown.byWorkoutType.length === 0 ? (
+                <p className="text-[13px] text-[var(--color-ash)]">Bu ay için henüz idman türü kırılımı yok.</p>
+              ) : (
+                <div className="flex flex-col gap-2.5">
+                  {workoutTypes.map((wt) => {
+                    const entry = shown.byWorkoutType.find((w) => w.workoutTypeId === wt.id);
+                    const count = entry?.count ?? 0;
+                    return (
+                      <div key={wt.id} className="flex items-center gap-3">
+                        <span className="w-20 shrink-0 truncate text-[13px] text-[var(--color-ink-soft)]">{wt.name}</span>
+                        <div className="h-2 flex-1 overflow-hidden rounded-full bg-[var(--color-surface-2)]">
+                          <div className="h-full rounded-full" style={{ width: `${(count / maxTypeCount) * 100}%`, background: wt.color }} />
+                        </div>
+                        <span className="w-6 shrink-0 text-right text-[13px] tabular-nums text-[var(--color-ink)]">{count}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </>
         ) : (

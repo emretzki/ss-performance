@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { SlotCell } from "./SlotCell";
+import { SlotCell, type TrainerVisual } from "./SlotCell";
 import {
   DAY_END_HOUR,
   DAY_START_HOUR,
@@ -18,12 +18,14 @@ interface TimeGridProps {
   days: Date[];
   sessions: GymSession[];
   zoom: ZoomLevel;
-  trainerColor: (trainerId: string) => string;
+  capacity: number;
+  trainerVisual: (trainerId: string) => TrainerVisual;
+  workoutTypeColor: (workoutTypeId: string | null) => string | null;
   onSlotClick: (day: Date, hour: number, minute: number, sessionsInThatSlot: GymSession[]) => void;
   showDayHeaders: boolean;
 }
 
-export function TimeGrid({ days, sessions, zoom, trainerColor, onSlotClick, showDayHeaders }: TimeGridProps) {
+export function TimeGrid({ days, sessions, zoom, capacity, trainerVisual, workoutTypeColor, onSlotClick, showDayHeaders }: TimeGridProps) {
   const rowHeight = ZOOM_ROW_HEIGHT[zoom];
   const slots = useMemo(() => slotTimes(), []);
   const now = new Date();
@@ -74,7 +76,9 @@ export function TimeGrid({ days, sessions, zoom, trainerColor, onSlotClick, show
                   key={`${slot.hour}-${slot.minute}`}
                   height={rowHeight}
                   sessions={sessionsInSlot(sessions, day, slot.hour, slot.minute)}
-                  trainerColor={trainerColor}
+                  capacity={capacity}
+                  trainerVisual={trainerVisual}
+                  workoutTypeColor={workoutTypeColor}
                   isPast={new Date(day).setHours(slot.hour, slot.minute, 0, 0) < now.getTime() && !today}
                   onClick={() => onSlotClick(day, slot.hour, slot.minute, sessionsInSlot(sessions, day, slot.hour, slot.minute))}
                 />

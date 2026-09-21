@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import clsx from "clsx";
-import { Plus } from "@phosphor-icons/react";
+import { GearSix, Plus } from "@phosphor-icons/react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBranch } from "@/contexts/BranchContext";
 import { listBranches, listMembers, listTrainers } from "@/lib/api";
@@ -16,9 +17,8 @@ export function TeamScreen() {
   const { profile } = useAuth();
   const { activeBranchId, branches } = useBranch();
   const qc = useQueryClient();
-  const isSuperAdmin = profile?.role === "super_admin";
   const canManage = profile?.role === "super_admin" || profile?.role === "owner";
-  const [tab, setTab] = useState<Tab>(isSuperAdmin && branches.length === 0 ? "branches" : "trainers");
+  const [tab, setTab] = useState<Tab>(canManage && branches.length === 0 ? "branches" : "trainers");
   const [openModal, setOpenModal] = useState<Tab | null>(null);
 
   const { data: trainers = [] } = useQuery({
@@ -34,9 +34,9 @@ export function TeamScreen() {
   });
 
   const { data: allBranches = [] } = useQuery({
-    queryKey: ["branches"],
-    queryFn: listBranches,
-    enabled: isSuperAdmin && tab === "branches",
+    queryKey: ["branches", profile?.organizationId],
+    queryFn: () => listBranches(profile?.organizationId),
+    enabled: canManage && tab === "branches",
   });
 
   return (
@@ -47,28 +47,39 @@ export function TeamScreen() {
             <h1 className="font-display text-[24px] font-bold text-[var(--color-ink)]">Ekip</h1>
             <p className="mt-1 text-[13px] text-[var(--color-ash)]">PT ve üye kayıtları.</p>
           </div>
-          {canManage && tab !== "branches" && activeBranchId && (
-            <button
-              onClick={() => setOpenModal(tab)}
-              className="flex h-9 items-center gap-1.5 rounded-full bg-[var(--color-ink)] px-3.5 text-[13px] font-medium text-[var(--color-paper)]"
-            >
-              <Plus size={15} weight="bold" />
-              {tab === "trainers" ? "PT ekle" : "Üye ekle"}
-            </button>
-          )}
-          {isSuperAdmin && tab === "branches" && (
-            <button
-              onClick={() => setOpenModal(tab)}
-              className="flex h-9 items-center gap-1.5 rounded-full bg-[var(--color-ink)] px-3.5 text-[13px] font-medium text-[var(--color-paper)]"
-            >
-              <Plus size={15} weight="bold" />
-              Şube ekle
-            </button>
-          )}
+          <div className="flex shrink-0 items-center gap-2">
+            {canManage && tab !== "branches" && activeBranchId && (
+              <button
+                onClick={() => setOpenModal(tab)}
+                className="flex h-9 items-center gap-1.5 rounded-full bg-[var(--color-ink)] px-3.5 text-[13px] font-medium text-[var(--color-paper)]"
+              >
+                <Plus size={15} weight="bold" />
+                {tab === "trainers" ? "PT ekle" : "Üye ekle"}
+              </button>
+            )}
+            {canManage && tab === "branches" && (
+              <button
+                onClick={() => setOpenModal(tab)}
+                className="flex h-9 items-center gap-1.5 rounded-full bg-[var(--color-ink)] px-3.5 text-[13px] font-medium text-[var(--color-paper)]"
+              >
+                <Plus size={15} weight="bold" />
+                Şube ekle
+              </button>
+            )}
+            {canManage && (
+              <Link
+                to="/settings"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--color-line-strong)] text-[var(--color-ink-soft)] lg:hidden"
+                aria-label="Ayarlar"
+              >
+                <GearSix size={16} />
+              </Link>
+            )}
+          </div>
         </div>
 
         <div className="flex rounded-[var(--radius-md)] border border-[var(--color-line-strong)] p-0.5">
-          {(["trainers", "members", ...(isSuperAdmin ? (["branches"] as const) : [])] as Tab[]).map((t) => (
+          {(["trainers", "members", ...(canManage ? (["branches"] as const) : [])] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -115,11 +126,12 @@ export function TeamScreen() {
           ))}
       </div>
 
-      {openModal === "trainers" && activeBranchId && (
+      {openModal === "trainers" && activeBranchId && profile && (
         <AddPersonForm
+          organizationId={profile.organizationId}
           branches={branches}
           defaultBranchId={activeBranchId}
-          canChooseRole={isSuperAdmin}
+          canChooseRole={canManage}
           onClose={() => setOpenModal(null)}
           onCreated={() => qc.invalidateQueries({ queryKey: ["trainers", activeBranchId] })}
         />
@@ -133,8 +145,12 @@ export function TeamScreen() {
         />
       )}
 
-      {openModal === "branches" && (
-        <AddBranchForm onClose={() => setOpenModal(null)} onCreated={() => qc.invalidateQueries({ queryKey: ["branches"] })} />
+      {openModal === "branches" && profile && (
+        <AddBranchForm
+          organizationId={profile.organizationId}
+          onClose={() => setOpenModal(null)}
+          onCreated={() => qc.invalidateQueries({ queryKey: ["branches"] })}
+        />
       )}
     </div>
   );

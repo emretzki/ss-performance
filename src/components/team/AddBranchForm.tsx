@@ -7,11 +7,12 @@ const inputClass =
   "h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-line-strong)] bg-[var(--color-surface)] px-3 text-[14px] text-[var(--color-ink)] focus:border-[var(--color-gold)]";
 
 interface AddBranchFormProps {
+  organizationId: string;
   onClose: () => void;
   onCreated: () => void;
 }
 
-export function AddBranchForm({ onClose, onCreated }: AddBranchFormProps) {
+export function AddBranchForm({ organizationId, onClose, onCreated }: AddBranchFormProps) {
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [saving, setSaving] = useState(false);
@@ -25,7 +26,7 @@ export function AddBranchForm({ onClose, onCreated }: AddBranchFormProps) {
     setSaving(true);
     setError(null);
     try {
-      await createBranch({ name: name.trim(), address: address.trim() || null });
+      await createBranch({ organizationId, name: name.trim(), address: address.trim() || null });
       onCreated();
       onClose();
     } catch {
@@ -36,11 +37,11 @@ export function AddBranchForm({ onClose, onCreated }: AddBranchFormProps) {
   }
 
   return (
-    <Modal title="Yeni şube ekle" subtitle="SportScience'ın yeni bir şubesini sisteme kaydet." onClose={onClose}>
+    <Modal title="Yeni şube ekle" subtitle="Yeni bir şubeyi sisteme kaydet." onClose={onClose}>
       <div className="flex flex-col gap-3">
         <div>
           <label className="mb-1.5 block text-[13px] font-medium text-[var(--color-ink-soft)]">Şube adı</label>
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="SportScience Beşiktaş" className={inputClass} />
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Beşiktaş şubesi" className={inputClass} />
         </div>
         <div>
           <label className="mb-1.5 block text-[13px] font-medium text-[var(--color-ink-soft)]">Adres (opsiyonel)</label>

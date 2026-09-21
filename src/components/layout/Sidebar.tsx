@@ -1,9 +1,9 @@
 import { NavLink } from "react-router-dom";
 import clsx from "clsx";
-import { CalendarBlank, ChartLineUp, SignOut, SquaresFour, UserCircle } from "@phosphor-icons/react";
+import { Barbell, CalendarBlank, ChartLineUp, GearSix, SignOut, SquaresFour, UserCircle } from "@phosphor-icons/react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBranch } from "@/contexts/BranchContext";
-import logo from "@/assets/logo.webp";
+import { useOrganization } from "@/contexts/OrganizationContext";
 import type { Role } from "@/lib/types";
 
 interface SidebarProps {
@@ -19,14 +19,21 @@ const LINK_CLASS = ({ isActive }: { isActive: boolean }) =>
 export function Sidebar({ role }: SidebarProps) {
   const { profile, signOut } = useAuth();
   const { branches, activeBranchId, setActiveBranchId, canSwitchBranch } = useBranch();
+  const { organization } = useOrganization();
 
   return (
     <aside className="hidden w-64 shrink-0 flex-col border-r border-[var(--color-line)] bg-[var(--color-surface)] p-4 lg:flex">
       <div className="mb-6 flex items-center gap-2.5 px-1">
-        <img src={logo} alt="SportScience" className="h-9 w-9 rounded-[var(--radius-sm)] object-contain" />
+        {organization?.logoUrl ? (
+          <img src={organization.logoUrl} alt={organization.name} className="h-9 w-9 rounded-[var(--radius-sm)] object-contain" />
+        ) : (
+          <span className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-sm)] bg-[var(--color-ink)] text-[var(--color-paper)]">
+            <Barbell size={18} weight="fill" />
+          </span>
+        )}
         <div>
-          <p className="font-display text-[15px] font-bold leading-none">SportScience</p>
-          <p className="text-[11px] text-[var(--color-ash)]">Performance &amp; Coaching</p>
+          <p className="font-display text-[15px] font-bold leading-none">{organization?.name ?? "Salon"}</p>
+          <p className="text-[11px] text-[var(--color-ash)]">Yönetim Paneli</p>
         </div>
       </div>
 
@@ -66,6 +73,12 @@ export function Sidebar({ role }: SidebarProps) {
           <NavLink to="/team" className={LINK_CLASS}>
             <SquaresFour size={19} />
             Ekip
+          </NavLink>
+        )}
+        {role !== "trainer" && (
+          <NavLink to="/settings" className={LINK_CLASS}>
+            <GearSix size={19} />
+            Ayarlar
           </NavLink>
         )}
         <NavLink to="/profile" className={LINK_CLASS}>
