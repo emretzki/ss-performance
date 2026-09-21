@@ -32,6 +32,7 @@
   --color-danger: #b23b3b;
   --color-danger-tint: #b23b3b14;
   --color-success: #3f7d4e;
+  --color-success-tint: #3f7d4e14;
 
   --color-pt-clay: #b0704a;
   --color-pt-moss: #6f7d4f;
@@ -62,6 +63,7 @@
   --color-danger: #ff6b6b;
   --color-danger-tint: #ff6b6b1f;
   --color-success: #5fd98a;
+  --color-success-tint: #5fd98a1f;
 
   --color-pt-clay: #c98a62;
   --color-pt-moss: #8fa06a;
