@@ -8,6 +8,7 @@ import {
   formatHourLabel,
   isSameDay,
   sessionsInSlot,
+  sessionsStartingInSlot,
   slotTimes,
   weekdayShort,
   type ZoomLevel,
@@ -76,6 +77,7 @@ export function TimeGrid({ days, sessions, zoom, capacity, trainerVisual, workou
                   key={`${slot.hour}-${slot.minute}`}
                   height={rowHeight}
                   sessions={sessionsInSlot(sessions, day, slot.hour, slot.minute)}
+                  startingSessions={sessionsStartingInSlot(sessions, day, slot.hour, slot.minute)}
                   capacity={capacity}
                   trainerVisual={trainerVisual}
                   workoutTypeColor={workoutTypeColor}

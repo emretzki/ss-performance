@@ -58,6 +58,24 @@ export function sessionsInSlot(sessions: GymSession[], day: Date, hour: number, 
   });
 }
 
+// A session longer than one grid row (e.g. 60 or 90 minutes) overlaps
+// several consecutive slots. sessionsInSlot() correctly returns it for all of
+// them — capacity has to count it in every slot it actually occupies — but
+// rendering its avatar chip in each of those slots reads as several separate
+// bookings stacked in a row instead of one longer one. This narrows to just
+// the slot the session actually starts in, so a 60-minute session shows
+// exactly one chip, not two.
+export function sessionsStartingInSlot(sessions: GymSession[], day: Date, hour: number, minute: number): GymSession[] {
+  const slotStart = new Date(day);
+  slotStart.setHours(hour, minute, 0, 0);
+  const slotEnd = new Date(slotStart.getTime() + SLOT_MIN * 60_000);
+
+  return sessions.filter((s) => {
+    const sStart = new Date(s.startsAt);
+    return sStart >= slotStart && sStart < slotEnd;
+  });
+}
+
 export function formatHourLabel(hour: number, minute: number): string {
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 }

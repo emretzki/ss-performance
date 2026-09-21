@@ -9,7 +9,12 @@ export interface TrainerVisual {
 }
 
 interface SlotCellProps {
+  /** Every session overlapping this slot (may have started in an earlier
+   * slot) — the source of truth for capacity/"Dolu", never for what to draw. */
   sessions: GymSession[];
+  /** Only the sessions that actually start in this slot — what gets an
+   * avatar chip, so a 60/90-minute session doesn't get one per row it spans. */
+  startingSessions: GymSession[];
   capacity: number;
   trainerVisual: (trainerId: string) => TrainerVisual;
   workoutTypeColor: (workoutTypeId: string | null) => string | null;
@@ -18,13 +23,22 @@ interface SlotCellProps {
   isPast: boolean;
 }
 
-export function SlotCell({ sessions, capacity, trainerVisual, workoutTypeColor, height, onClick, isPast }: SlotCellProps) {
+export function SlotCell({ sessions, startingSessions, capacity, trainerVisual, workoutTypeColor, height, onClick, isPast }: SlotCellProps) {
   const now = new Date();
-  const active = sessions.filter((s) => s.status !== "cancelled" && displayStatus(s, now) !== "done");
+  const isActive = (s: GymSession) => s.status !== "cancelled" && displayStatus(s, now) !== "done";
+  const active = sessions.filter(isActive);
   const full = active.length >= capacity;
   const compact = height < 64;
-  const shown = active.slice(0, 3);
-  const overflow = active.length - shown.length;
+
+  const startingIds = new Set(startingSessions.map((s) => s.id));
+  const startingActive = active.filter((s) => startingIds.has(s.id));
+  // Sessions that began in an earlier slot and are still running through
+  // this one: already have a chip up there, so they get a small continuation
+  // mark here instead of a second chip.
+  const continuing = active.filter((s) => !startingIds.has(s.id));
+
+  const shown = startingActive.slice(0, 3);
+  const overflow = startingActive.length - shown.length;
 
   return (
     <button
@@ -64,6 +78,15 @@ export function SlotCell({ sessions, capacity, trainerVisual, workoutTypeColor, 
           {overflow > 0 && (
             <span className="shrink-0 text-[11px] font-medium text-[var(--color-ash)]">+{overflow}</span>
           )}
+          {continuing.length > 0 &&
+            continuing.slice(0, 3).map((s) => (
+              <span
+                key={s.id}
+                aria-hidden="true"
+                className="h-1.5 w-1.5 shrink-0 rounded-full opacity-70"
+                style={{ background: trainerVisual(s.trainerId).color }}
+              />
+            ))}
           {full && !compact && <span className="ml-1 shrink-0 text-[11px] font-medium text-[var(--color-ink-soft)]">Dolu</span>}
         </>
       )}
