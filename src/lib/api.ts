@@ -10,6 +10,7 @@ import {
   type Member,
   type Organization,
   type Profile,
+  type PublicOrgBranding,
   type Role,
   type SessionStatus,
   type Trainer,
@@ -82,11 +83,22 @@ export async function getMyOrganization(organizationId: string): Promise<Organiz
 }
 
 /** Public lookup (no auth required) used to brand a tenant's login page before anyone signs in. */
-export async function getOrganizationBySlug(slug: string): Promise<Organization | null> {
+export async function getOrganizationBySlug(slug: string): Promise<PublicOrgBranding | null> {
   if (isSupabaseConfigured && supabase) {
-    const { data, error } = await supabase.from("organizations").select("*").eq("slug", slug).maybeSingle();
+    // Pre-login, so only what public_organization_branding() exposes: no
+    // owner_auth_id, no created_at, nothing beyond what a login screen needs
+    // to show a tenant's own logo/name/color before anyone signs in.
+    const { data, error } = await supabase.rpc("public_organization_branding", { org_slug: slug });
     if (error) throw error;
-    return data ? mapOrganization(data) : null;
+    const row = data?.[0];
+    if (!row) return null;
+    return {
+      id: row.id,
+      name: row.name,
+      slug: row.slug,
+      logoUrl: row.logo_url,
+      accentColor: row.accent_color,
+    };
   }
   return mockDB.get().organizations.find((o) => o.slug === slug) ?? null;
 }

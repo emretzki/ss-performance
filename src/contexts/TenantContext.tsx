@@ -3,13 +3,13 @@ import { useQuery } from "@tanstack/react-query";
 import { getOrganizationBySlug } from "@/lib/api";
 import { getTenantSlugFromHostname } from "@/lib/tenant";
 import { isSupabaseConfigured } from "@/lib/supabase";
-import type { Organization } from "@/lib/types";
+import type { PublicOrgBranding } from "@/lib/types";
 
 type TenantState =
   | { status: "landing" }
   | { status: "loading" }
   | { status: "not-found"; slug: string }
-  | { status: "ready"; slug: string | null; organization: Organization | null };
+  | { status: "ready"; slug: string | null; organization: PublicOrgBranding | null };
 
 const TenantContext = createContext<TenantState | null>(null);
 

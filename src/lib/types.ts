@@ -10,6 +10,17 @@ export interface Organization {
   createdAt: string;
 }
 
+/** What a pre-login visitor is allowed to know about a tenant: branding
+ * only, via the public_organization_branding() RPC — never owner_auth_id or
+ * created_at, which are only visible to that org's own members. */
+export interface PublicOrgBranding {
+  id: string;
+  name: string;
+  slug: string;
+  logoUrl: string | null;
+  accentColor: string;
+}
+
 export interface Branch {
   id: string;
   organizationId: string;
