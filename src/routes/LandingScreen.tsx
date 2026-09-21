@@ -115,6 +115,17 @@ const LANDING_MARKUP = `
   </section>
 
 </main>
+
+<footer class="gk-footer">
+  <div class="gk-footer__row">
+    <span>© 2026 gymkoc. Tüm hakları saklıdır.</span>
+    <nav class="gk-footer__links">
+      <a href="/gizlilik-politikasi">Gizlilik Politikası</a>
+      <a href="/kullanim-kosullari">Kullanım Koşulları</a>
+      <a href="mailto:emre.korkmaz2407@gmail.com">İletişim</a>
+    </nav>
+  </div>
+</footer>
 `;
 
 const LANDING_ASSET_ATTR = "data-landing-asset";

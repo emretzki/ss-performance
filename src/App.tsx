@@ -9,6 +9,8 @@ import { AppShell } from "@/components/layout/AppShell";
 import { LandingScreen } from "@/routes/LandingScreen";
 import { LoginScreen } from "@/routes/LoginScreen";
 import { SignupScreen } from "@/routes/SignupScreen";
+import { PrivacyScreen } from "@/routes/PrivacyScreen";
+import { TermsScreen } from "@/routes/TermsScreen";
 import { ResetPasswordScreen } from "@/routes/ResetPasswordScreen";
 import { CalendarScreen } from "@/components/calendar/CalendarScreen";
 import { OverviewScreen } from "@/routes/OverviewScreen";
@@ -55,6 +57,8 @@ export default function App() {
       <Routes>
         <Route path="/" element={<LandingScreen />} />
         <Route path="/signup" element={<SignupScreen />} />
+        <Route path="/gizlilik-politikasi" element={<PrivacyScreen />} />
+        <Route path="/kullanim-kosullari" element={<TermsScreen />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     );

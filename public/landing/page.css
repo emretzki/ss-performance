@@ -302,6 +302,38 @@
   border-top: 1px solid rgba(147,160,188,0.18);
 }
 
+/* -------------------------------------------------------------- footer */
+.gk-footer {
+  background: var(--gk-navy-deep);
+  padding: var(--sc-5) var(--sc-gutter);
+  border-top: 1px solid rgba(147,160,188,0.14);
+}
+.gk-footer__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sc-3);
+  max-width: var(--sc-maxw);
+  margin-inline: auto;
+  font-family: var(--sc-font-text);
+  font-size: 0.75rem;
+  color: var(--sc-ink-soft);
+}
+.gk-footer__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sc-5);
+}
+.gk-footer__links a {
+  color: var(--sc-ink-soft);
+  text-decoration: underline;
+  text-decoration-color: rgba(147,160,188,0.35);
+  text-underline-offset: 3px;
+  transition: color 160ms var(--sc-ease-out);
+}
+.gk-footer__links a:hover { color: var(--sc-accent); text-decoration-color: var(--sc-accent); }
+
 /* ----------------------------------------------------------- login overlay */
 .gk-login-overlay {
   position: fixed;
