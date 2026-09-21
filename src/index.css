@@ -40,6 +40,16 @@
   --color-pt-plum: #7a5c74;
   --color-pt-stone: #6b6458;
 
+  /* Deliberately theme-invariant (unlike --color-ink/paper, which flip
+     between light/dark): the branch-wide P&L panel in Raporlar always reads
+     as a dark "ledger", in either theme, to set it apart from ordinary
+     surfaces as sensitive financial data. */
+  --color-ledger: #14110c;
+  --color-ledger-ink: #f5efe4;
+  --color-ledger-ink-soft: #b9ae9c;
+  --color-ledger-line: rgba(245, 239, 228, 0.14);
+  --color-ledger-loss: #e0836a;
+
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 14px;
