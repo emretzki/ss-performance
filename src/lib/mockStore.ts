@@ -41,11 +41,11 @@ function seed(): MockDB {
   ];
 
   const trainers: Trainer[] = [
-    { id: "t1", organizationId: "org1", branchId: "b1", role: "trainer", fullName: "Emre Korkmaz", phone: "0532 000 00 01", avatarColor: PT_BADGE_COLORS[0], bio: null, badgeColor: PT_BADGE_COLORS[0] },
-    { id: "t2", organizationId: "org1", branchId: "b1", role: "trainer", fullName: "Deniz Aksoy", phone: "0532 000 00 02", avatarColor: PT_BADGE_COLORS[1], bio: null, badgeColor: PT_BADGE_COLORS[1] },
-    { id: "t3", organizationId: "org1", branchId: "b1", role: "trainer", fullName: "Cem Yıldız", phone: "0532 000 00 03", avatarColor: PT_BADGE_COLORS[2], bio: null, badgeColor: PT_BADGE_COLORS[2] },
-    { id: "t4", organizationId: "org1", branchId: "b2", role: "trainer", fullName: "Selin Kara", phone: "0532 000 00 04", avatarColor: PT_BADGE_COLORS[0], bio: null, badgeColor: PT_BADGE_COLORS[0] },
-    { id: "t5", organizationId: "org2", branchId: "b3", role: "trainer", fullName: "Kaan Duru", phone: "0532 000 00 05", avatarColor: PT_BADGE_COLORS[3], bio: null, badgeColor: PT_BADGE_COLORS[3] },
+    { id: "t1", organizationId: "org1", branchId: "b1", role: "trainer", fullName: "Emre Korkmaz", phone: "0532 000 00 01", avatarColor: PT_BADGE_COLORS[0], bio: null, badgeColor: PT_BADGE_COLORS[0], commissionRate: 40 },
+    { id: "t2", organizationId: "org1", branchId: "b1", role: "trainer", fullName: "Deniz Aksoy", phone: "0532 000 00 02", avatarColor: PT_BADGE_COLORS[1], bio: null, badgeColor: PT_BADGE_COLORS[1], commissionRate: 50 },
+    { id: "t3", organizationId: "org1", branchId: "b1", role: "trainer", fullName: "Cem Yıldız", phone: "0532 000 00 03", avatarColor: PT_BADGE_COLORS[2], bio: null, badgeColor: PT_BADGE_COLORS[2], commissionRate: 50 },
+    { id: "t4", organizationId: "org1", branchId: "b2", role: "trainer", fullName: "Selin Kara", phone: "0532 000 00 04", avatarColor: PT_BADGE_COLORS[0], bio: null, badgeColor: PT_BADGE_COLORS[0], commissionRate: 45 },
+    { id: "t5", organizationId: "org2", branchId: "b3", role: "trainer", fullName: "Kaan Duru", phone: "0532 000 00 05", avatarColor: PT_BADGE_COLORS[3], bio: null, badgeColor: PT_BADGE_COLORS[3], commissionRate: 50 },
   ];
 
   const profiles: Profile[] = [
@@ -56,9 +56,9 @@ function seed(): MockDB {
   ];
 
   const members: Member[] = [
-    { id: "m1", branchId: "b1", fullName: "Kerem Uslu", phone: "0533 111 22 33", notes: null, createdAt: new Date().toISOString() },
-    { id: "m2", branchId: "b1", fullName: "Naz Yavuz", phone: "0533 222 33 44", notes: "Diz sakatlığı geçmişi var", createdAt: new Date().toISOString() },
-    { id: "m3", branchId: "b1", fullName: "Barış Ete", phone: "0533 333 44 55", notes: null, createdAt: new Date().toISOString() },
+    { id: "m1", branchId: "b1", fullName: "Kerem Uslu", phone: "0533 111 22 33", notes: null, createdAt: new Date().toISOString(), packageName: "8 Ders Paketi", packageTotalPrice: 6400, packageTotalSessions: 8, packageSessionsUsed: 2 },
+    { id: "m2", branchId: "b1", fullName: "Naz Yavuz", phone: "0533 222 33 44", notes: "Diz sakatlığı geçmişi var", createdAt: new Date().toISOString(), packageName: "12 Ders Paketi", packageTotalPrice: 9000, packageTotalSessions: 12, packageSessionsUsed: 1 },
+    { id: "m3", branchId: "b1", fullName: "Barış Ete", phone: "0533 333 44 55", notes: null, createdAt: new Date().toISOString(), packageName: null, packageTotalPrice: null, packageTotalSessions: null, packageSessionsUsed: 0 },
   ];
 
   const sessions: GymSession[] = [
@@ -102,6 +102,15 @@ function persist() {
 
 const listeners = new Set<() => void>();
 
+function bumpMemberUsage(memberId: string, delta: 1 | -1) {
+  db = {
+    ...db,
+    members: db.members.map((m) =>
+      m.id === memberId ? { ...m, packageSessionsUsed: Math.max(0, m.packageSessionsUsed + delta) } : m,
+    ),
+  };
+}
+
 export function subscribeMockDB(fn: () => void): () => void {
   listeners.add(fn);
   return () => listeners.delete(fn);
@@ -111,12 +120,21 @@ export const mockDB = {
   get(): MockDB {
     return db;
   },
+  // Mirrors the real DB's bump_member_package_usage trigger, so mock mode
+  // behaves the same way: package_sessions_used only ever moves in response
+  // to an actual non-cancelled session existing for that member.
   addSession(session: GymSession) {
     db = { ...db, sessions: [...db.sessions, session] };
+    if (session.memberId && session.status !== "cancelled") bumpMemberUsage(session.memberId, 1);
     persist();
   },
   updateSession(id: string, patch: Partial<Pick<GymSession, "notes" | "status" | "startedAt" | "endedAt">>) {
+    const before = db.sessions.find((s) => s.id === id);
     db = { ...db, sessions: db.sessions.map((s) => (s.id === id ? { ...s, ...patch } : s)) };
+    if (before && patch.status && patch.status !== before.status && before.memberId) {
+      if (before.status !== "cancelled" && patch.status === "cancelled") bumpMemberUsage(before.memberId, -1);
+      else if (before.status === "cancelled" && patch.status !== "cancelled") bumpMemberUsage(before.memberId, 1);
+    }
     persist();
   },
   updateProfileAvatar(profileId: string, avatarUrl: string) {
@@ -145,6 +163,14 @@ export const mockDB = {
   },
   addMember(member: Member) {
     db = { ...db, members: [...db.members, member] };
+    persist();
+  },
+  updateMember(id: string, patch: Partial<Pick<Member, "fullName" | "phone" | "notes" | "packageName" | "packageTotalPrice" | "packageTotalSessions" | "packageSessionsUsed">>) {
+    db = { ...db, members: db.members.map((m) => (m.id === id ? { ...m, ...patch } : m)) };
+    persist();
+  },
+  updateTrainerCommission(trainerId: string, commissionRate: number) {
+    db = { ...db, trainers: db.trainers.map((t) => (t.id === trainerId ? { ...t, commissionRate } : t)) };
     persist();
   },
   addWorkoutType(wt: WorkoutType) {

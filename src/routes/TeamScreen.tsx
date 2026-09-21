@@ -7,9 +7,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useBranch } from "@/contexts/BranchContext";
 import { listBranches, listMembers, listTrainers } from "@/lib/api";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { PackageProgressBar } from "@/components/ui/PackageProgressBar";
 import { AddBranchForm } from "@/components/team/AddBranchForm";
 import { AddMemberForm } from "@/components/team/AddMemberForm";
 import { AddPersonForm } from "@/components/team/AddPersonForm";
+import { EditTrainerForm } from "@/components/team/EditTrainerForm";
+import type { Member, Trainer } from "@/lib/types";
 
 type Tab = "trainers" | "members" | "branches";
 
@@ -20,6 +23,8 @@ export function TeamScreen() {
   const canManage = profile?.role === "super_admin" || profile?.role === "owner";
   const [tab, setTab] = useState<Tab>(canManage && branches.length === 0 ? "branches" : "trainers");
   const [openModal, setOpenModal] = useState<Tab | null>(null);
+  const [editingMember, setEditingMember] = useState<Member | null>(null);
+  const [editingTrainer, setEditingTrainer] = useState<Trainer | null>(null);
 
   const { data: trainers = [] } = useQuery({
     queryKey: ["trainers", activeBranchId],
@@ -97,18 +102,59 @@ export function TeamScreen() {
           (trainers.length === 0 ? (
             <EmptyState message="Bu şubede henüz PT kaydı yok." />
           ) : (
-            <ListPanel
-              items={trainers.map((t) => ({ id: t.id, title: t.fullName, subtitle: t.phone ?? "Telefon eklenmedi", color: t.badgeColor }))}
-            />
+            <div className="flex flex-col divide-y divide-[var(--color-line)] rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)]">
+              {trainers.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => canManage && setEditingTrainer(t)}
+                  disabled={!canManage}
+                  className="flex w-full items-center gap-3 px-4 py-3 text-left disabled:cursor-default"
+                >
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: t.badgeColor }} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[14px] font-medium text-[var(--color-ink)]">{t.fullName}</p>
+                    <p className="truncate text-[12px] text-[var(--color-ash)]">{t.phone ?? "Telefon eklenmedi"}</p>
+                  </div>
+                  {t.role === "trainer" && (
+                    <span className="shrink-0 text-[12px] font-medium text-[var(--color-ink-soft)]">%{t.commissionRate} prim</span>
+                  )}
+                </button>
+              ))}
+            </div>
           ))}
 
         {tab === "members" &&
           (members.length === 0 ? (
             <EmptyState message="Bu şubede henüz üye kaydı yok." />
           ) : (
-            <ListPanel
-              items={members.map((m) => ({ id: m.id, title: m.fullName, subtitle: m.phone ?? "Telefon eklenmedi", color: "var(--color-ash)" }))}
-            />
+            <div className="flex flex-col divide-y divide-[var(--color-line)] rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)]">
+              {members.map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => canManage && setEditingMember(m)}
+                  disabled={!canManage}
+                  className="flex w-full flex-col gap-2 px-4 py-3 text-left disabled:cursor-default"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[var(--color-ash)]" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[14px] font-medium text-[var(--color-ink)]">{m.fullName}</p>
+                      <p className="truncate text-[12px] text-[var(--color-ash)]">
+                        {m.packageName ?? m.phone ?? "Telefon eklenmedi"}
+                      </p>
+                    </div>
+                    {m.packageTotalSessions && (
+                      <span className="shrink-0 text-[12px] font-medium text-[var(--color-ink-soft)]">
+                        {Math.max(0, m.packageTotalSessions - m.packageSessionsUsed)} ders kaldı
+                      </span>
+                    )}
+                  </div>
+                  {Boolean(m.packageTotalSessions) && (
+                    <PackageProgressBar used={m.packageSessionsUsed} total={m.packageTotalSessions!} />
+                  )}
+                </button>
+              ))}
+            </div>
           ))}
 
         {tab === "branches" &&
@@ -150,6 +196,23 @@ export function TeamScreen() {
           organizationId={profile.organizationId}
           onClose={() => setOpenModal(null)}
           onCreated={() => qc.invalidateQueries({ queryKey: ["branches"] })}
+        />
+      )}
+
+      {editingMember && activeBranchId && (
+        <AddMemberForm
+          branchId={activeBranchId}
+          member={editingMember}
+          onClose={() => setEditingMember(null)}
+          onCreated={() => qc.invalidateQueries({ queryKey: ["members", activeBranchId] })}
+        />
+      )}
+
+      {editingTrainer && (
+        <EditTrainerForm
+          trainer={editingTrainer}
+          onClose={() => setEditingTrainer(null)}
+          onSaved={() => qc.invalidateQueries({ queryKey: ["trainers", activeBranchId] })}
         />
       )}
     </div>

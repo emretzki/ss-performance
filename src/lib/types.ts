@@ -44,10 +44,17 @@ export interface Profile {
 }
 
 export interface Trainer extends Profile {
-  role: "trainer";
+  // A branch owner who also personally coaches gets a trainers row too (see
+  // ensureTrainerRecordExists in api.ts), so this is the real profile role,
+  // not always literally "trainer" — used to exempt owner-given sessions from
+  // commission math.
+  role: Role;
   branchId: string;
   bio: string | null;
   badgeColor: string;
+  /** Percent of a session's revenue this trainer keeps (owner sets it per PT).
+   * Meaningless for a branch owner's own sessions — those are commission-exempt. */
+  commissionRate: number;
 }
 
 export interface Member {
@@ -57,6 +64,14 @@ export interface Member {
   phone: string | null;
   notes: string | null;
   createdAt: string;
+  /** Free-form package the member bought — no catalog, entered per member. */
+  packageName: string | null;
+  packageTotalPrice: number | null;
+  packageTotalSessions: number | null;
+  /** Maintained server-side (DB trigger on sessions), not client math: bumped
+   * when a non-cancelled session is logged against this member, credited
+   * back on cancel. Reset to 0 whenever the package fields are (re)set. */
+  packageSessionsUsed: number;
 }
 
 export interface WorkoutType {

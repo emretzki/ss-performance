@@ -3,10 +3,14 @@ import { useQueries, useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBranch } from "@/contexts/BranchContext";
-import { getTrainerStats, listTrainers, listWorkoutTypes } from "@/lib/api";
+import { getBranchRevenue, getTrainerStats, listTrainers, listWorkoutTypes } from "@/lib/api";
 import { StatCard } from "@/components/ui/StatCard";
 import { WeekBars } from "@/components/ui/WeekBars";
 import clsx from "clsx";
+
+function formatTL(n: number): string {
+  return `${Math.round(n).toLocaleString("tr-TR")} TL`;
+}
 
 function pct(current: number, previous: number): number {
   if (previous === 0) return current > 0 ? 100 : 0;
@@ -50,6 +54,16 @@ export function ReportsScreen() {
     queryFn: () => listWorkoutTypes(profile!.organizationId),
     enabled: Boolean(profile?.organizationId),
   });
+
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const { data: revenue } = useQuery({
+    queryKey: ["branch-revenue", activeBranchId, monthStart.toISOString()],
+    queryFn: () => getBranchRevenue(activeBranchId as string, monthStart, monthEnd),
+    enabled: Boolean(activeBranchId),
+  });
+  const trainerRevenue = trainerId ? revenue?.byTrainer.find((b) => b.trainerId === trainerId) : undefined;
 
   const allStatsQueries = useQueries({
     queries: trainers.map((t) => ({
@@ -137,6 +151,25 @@ export function ReportsScreen() {
               <StatCard label="Bu hafta" value={shown.thisWeek} delta={{ value: pct(shown.thisWeek, shown.lastWeek), label: "geçen haftaya göre" }} />
               <StatCard label="Bu ay" value={shown.thisMonth} delta={{ value: pct(shown.thisMonth, shown.lastMonth), label: "geçen aya göre" }} />
             </div>
+
+            {showBranchTotal && revenue && (
+              <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] p-4">
+                <p className="mb-1 text-[13px] font-medium text-[var(--color-ink-soft)]">Ciro (bu ay)</p>
+                <p className="mb-4 text-[12px] text-[var(--color-ash)]">Üyelerin paket birim fiyatına göre, gerçekleşen (iptal edilmemiş, saati geçmiş) dersler.</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <StatCard label="Toplam ciro" value={formatTL(revenue.totalRevenue)} />
+                  <StatCard label="Salon karı" value={formatTL(revenue.ownerProfit)} />
+                  <StatCard label="PT primi" value={formatTL(revenue.commissionPayable)} />
+                </div>
+              </div>
+            )}
+
+            {!showBranchTotal && trainerRevenue && (
+              <div className="grid grid-cols-2 gap-3">
+                <StatCard label={isTrainer ? "Ürettiğin ciro (bu ay)" : "Ürettiği ciro (bu ay)"} value={formatTL(trainerRevenue.revenue)} />
+                <StatCard label={isTrainer ? "Kazandığın prim (bu ay)" : "Ödenecek prim (bu ay)"} value={formatTL(trainerRevenue.commission)} />
+              </div>
+            )}
 
             <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] p-4">
               <p className="mb-4 text-[13px] font-medium text-[var(--color-ink-soft)]">Son 7 gün</p>

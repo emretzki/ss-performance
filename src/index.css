@@ -11,9 +11,45 @@
   --font-display: "Archivo", system-ui, sans-serif;
   --font-body: "Space Grotesk", system-ui, sans-serif;
 
-  /* Editorial dark-navy base, matching the gymkoc marketing site. Per-tenant
-     brand color lives entirely in --color-gold*, set at runtime by
-     OrganizationContext; these are the fixed structural tones. */
+  /* Light is the default ground (most users prefer it for a daily-use panel);
+     dark is opt-in via [data-theme="dark"] below. Per-tenant brand color
+     lives entirely in --color-gold*, set at runtime by OrganizationContext,
+     and stays the same across both themes — it already reads fine on both. */
+  --color-ink: #17140f;
+  --color-ink-soft: #4a463d;
+  --color-ash: #8a8478;
+  --color-paper: #faf8f4;
+  --color-surface: #ffffff;
+  --color-surface-2: #f1eee7;
+  --color-line: #e4e0d6;
+  --color-line-strong: #d2ccbc;
+
+  --color-gold: #96792c;
+  --color-gold-deep: #6e5a20;
+  --color-gold-soft: #c9af6e;
+  --color-gold-tint: #96792c1a;
+
+  --color-danger: #b23b3b;
+  --color-danger-tint: #b23b3b14;
+  --color-success: #3f7d4e;
+
+  --color-pt-clay: #b0704a;
+  --color-pt-moss: #6f7d4f;
+  --color-pt-slate: #556478;
+  --color-pt-plum: #7a5c74;
+  --color-pt-stone: #6b6458;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  --shadow-float: 0 8px 24px rgba(23, 20, 15, 0.12);
+}
+
+/* Dark mode: same roles, editorial dark-navy values (matches the gymkoc
+   marketing site). Toggled by ThemeContext setting document.documentElement's
+   data-theme attribute; persisted per-browser in localStorage. */
+:root[data-theme="dark"] {
   --color-ink: #f2f5ef;
   --color-ink-soft: #93a0bc;
   --color-ash: #6c7a9a;
@@ -22,11 +58,6 @@
   --color-surface-2: #1c2850;
   --color-line: #93a0bc24;
   --color-line-strong: #93a0bc42;
-
-  --color-gold: #96792c;
-  --color-gold-deep: #6e5a20;
-  --color-gold-soft: #c9af6e;
-  --color-gold-tint: #96792c1a;
 
   --color-danger: #ff6b6b;
   --color-danger-tint: #ff6b6b1f;
@@ -38,15 +69,13 @@
   --color-pt-plum: #9a7893;
   --color-pt-stone: #9c9384;
 
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-
   --shadow-float: 0 16px 40px rgba(4, 8, 20, 0.55);
+
+  color-scheme: dark;
 }
 
 html {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 body {

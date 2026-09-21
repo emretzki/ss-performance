@@ -338,7 +338,7 @@ export async function listTrainers(branchId: string): Promise<Trainer[]> {
   if (isSupabaseConfigured && supabase) {
     const { data, error } = await supabase
       .from("trainers")
-      .select("id, branch_id, bio, badge_color, profiles(organization_id, full_name, phone, avatar_url)")
+      .select("id, branch_id, bio, badge_color, commission_rate, profiles(organization_id, full_name, phone, avatar_url, role)")
       .eq("branch_id", branchId);
     if (error) throw error;
     return data.map((r) => {
@@ -347,17 +347,27 @@ export async function listTrainers(branchId: string): Promise<Trainer[]> {
         id: r.id,
         organizationId: p?.organization_id ?? "",
         branchId: r.branch_id,
-        role: "trainer" as const,
+        role: (p?.role ?? "trainer") as Role,
         fullName: p?.full_name ?? "",
         phone: p?.phone ?? null,
         avatarColor: r.badge_color,
         avatarUrl: p?.avatar_url ?? null,
         badgeColor: r.badge_color,
         bio: r.bio,
+        commissionRate: r.commission_rate,
       };
     });
   }
   return mockDB.get().trainers.filter((t) => t.branchId === branchId);
+}
+
+export async function updateTrainerCommissionRate(trainerId: string, commissionRate: number): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase.from("trainers").update({ commission_rate: commissionRate }).eq("id", trainerId);
+    if (error) throw error;
+    return;
+  }
+  mockDB.updateTrainerCommission(trainerId, commissionRate);
 }
 
 export interface CreatePersonInput {
@@ -408,7 +418,7 @@ export async function createPersonWithRole(input: CreatePersonInput): Promise<Pr
   };
   const trainer: Trainer | null =
     input.role === "trainer"
-      ? { ...profile, role: "trainer", branchId: input.branchId, bio: null, badgeColor: profile.avatarColor }
+      ? { ...profile, role: "trainer", branchId: input.branchId, bio: null, badgeColor: profile.avatarColor, commissionRate: 50 }
       : null;
   mockDB.upsertPerson(profile, trainer);
   return profile;
@@ -422,11 +432,26 @@ function randomBadgeColor(): string {
 // Members
 // ---------------------------------------------------------------------------
 
+function mapMember(r: Record<string, unknown>): Member {
+  return {
+    id: r.id as string,
+    branchId: r.branch_id as string,
+    fullName: r.full_name as string,
+    phone: r.phone as string | null,
+    notes: r.notes as string | null,
+    createdAt: r.created_at as string,
+    packageName: (r.package_name as string | null) ?? null,
+    packageTotalPrice: (r.package_total_price as number | null) ?? null,
+    packageTotalSessions: (r.package_total_sessions as number | null) ?? null,
+    packageSessionsUsed: (r.package_sessions_used as number | undefined) ?? 0,
+  };
+}
+
 export async function listMembers(branchId: string): Promise<Member[]> {
   if (isSupabaseConfigured && supabase) {
     const { data, error } = await supabase.from("members").select("*").eq("branch_id", branchId).order("full_name");
     if (error) throw error;
-    return data.map((r) => ({ id: r.id, branchId: r.branch_id, fullName: r.full_name, phone: r.phone, notes: r.notes, createdAt: r.created_at }));
+    return data.map(mapMember);
   }
   return mockDB.get().members.filter((m) => m.branchId === branchId);
 }
@@ -439,7 +464,7 @@ export async function createMember(input: { branchId: string; fullName: string; 
       .select()
       .single();
     if (error) throw error;
-    return { id: data.id, branchId: data.branch_id, fullName: data.full_name, phone: data.phone, notes: data.notes, createdAt: data.created_at };
+    return mapMember(data);
   }
   const member: Member = {
     id: `m${Date.now()}`,
@@ -448,9 +473,53 @@ export async function createMember(input: { branchId: string; fullName: string; 
     phone: input.phone,
     notes: input.notes,
     createdAt: new Date().toISOString(),
+    packageName: null,
+    packageTotalPrice: null,
+    packageTotalSessions: null,
+    packageSessionsUsed: 0,
   };
   mockDB.addMember(member);
   return member;
+}
+
+export interface UpdateMemberInput {
+  fullName?: string;
+  phone?: string | null;
+  notes?: string | null;
+  packageName?: string | null;
+  packageTotalPrice?: number | null;
+  packageTotalSessions?: number | null;
+  /** Only set when explicitly renewing a package — never as a side effect of
+   * an unrelated field edit. */
+  resetPackageUsage?: boolean;
+}
+
+export async function updateMember(id: string, input: UpdateMemberInput): Promise<Member> {
+  if (isSupabaseConfigured && supabase) {
+    const patch: Record<string, unknown> = {};
+    if (input.fullName !== undefined) patch.full_name = input.fullName;
+    if (input.phone !== undefined) patch.phone = input.phone;
+    if (input.notes !== undefined) patch.notes = input.notes;
+    if (input.packageName !== undefined) patch.package_name = input.packageName;
+    if (input.packageTotalPrice !== undefined) patch.package_total_price = input.packageTotalPrice;
+    if (input.packageTotalSessions !== undefined) patch.package_total_sessions = input.packageTotalSessions;
+    if (input.resetPackageUsage) patch.package_sessions_used = 0;
+    const { data, error } = await supabase.from("members").update(patch).eq("id", id).select().single();
+    if (error) throw error;
+    return mapMember(data);
+  }
+  mockDB.updateMember(id, {
+    ...(input.fullName !== undefined && { fullName: input.fullName }),
+    ...(input.phone !== undefined && { phone: input.phone }),
+    ...(input.notes !== undefined && { notes: input.notes }),
+    ...(input.packageName !== undefined && { packageName: input.packageName }),
+    ...(input.packageTotalPrice !== undefined && { packageTotalPrice: input.packageTotalPrice }),
+    ...(input.packageTotalSessions !== undefined && { packageTotalSessions: input.packageTotalSessions }),
+    ...(input.resetPackageUsage && { packageSessionsUsed: 0 }),
+  });
+  const updated = mockDB.get().members.find((m) => m.id === id);
+  if (!updated) throw new Error("Üye bulunamadı.");
+  return updated;
 }
 
 // ---------------------------------------------------------------------------
@@ -571,13 +640,16 @@ async function ensureTrainerRecordExists(trainerId: string, branchId: string): P
     id: p.id,
     organizationId: p.organizationId,
     branchId,
-    role: "trainer",
+    // The real profile role (owner or trainer) — a self-logging owner's
+    // sessions must stay identifiable as commission-exempt in revenue math.
+    role: p.role,
     fullName: p.fullName,
     phone: p.phone,
     avatarColor: badgeColor,
     avatarUrl: p.avatarUrl,
     bio: null,
     badgeColor,
+    commissionRate: 50,
   });
 }
 
@@ -735,6 +807,66 @@ export async function getTrainerStats(branchId: string, trainerId: string): Prom
     lastMonth: count(lastMonthStart, monthStart),
     byDay,
     byWorkoutType: [...byTypeMap.entries()].map(([workoutTypeId, count]) => ({ workoutTypeId, count })),
+  };
+}
+
+export interface RevenueSummary {
+  /** Total realized revenue (ciro) in the window: sum of each counted
+   * session's member-package unit price. Sessions with no member or no
+   * package on that member contribute nothing — there's no price to attribute. */
+  totalRevenue: number;
+  /** What stays with the gym: 100% of a branch owner's own sessions (exempt
+   * from commission) plus each PT's own (100% - commissionRate) share. */
+  ownerProfit: number;
+  /** Total owed to PTs across the window (sum of each session's
+   * unitPrice * commissionRate). */
+  commissionPayable: number;
+  byTrainer: { trainerId: string; revenue: number; commission: number }[];
+}
+
+/** Revenue/profit for a branch in [from, to). Built entirely from sessions +
+ * members + trainers already fetched elsewhere — no schema of its own, and
+ * therefore identical in real and mock mode for free. "Realized" mirrors
+ * getTrainerStats' own definition: not cancelled, and already happened. */
+export async function getBranchRevenue(branchId: string, from: Date, to: Date): Promise<RevenueSummary> {
+  const [sessions, members, trainers] = await Promise.all([listSessions(branchId, from, to), listMembers(branchId), listTrainers(branchId)]);
+  const now = new Date();
+  const memberById = new Map(members.map((m) => [m.id, m]));
+  const trainerById = new Map(trainers.map((t) => [t.id, t]));
+
+  let totalRevenue = 0;
+  let ownerProfit = 0;
+  let commissionPayable = 0;
+  const byTrainerMap = new Map<string, { revenue: number; commission: number }>();
+
+  for (const s of sessions) {
+    if (s.status === "cancelled" || new Date(s.startsAt) > now) continue;
+    const member = s.memberId ? memberById.get(s.memberId) : undefined;
+    if (!member?.packageTotalPrice || !member.packageTotalSessions) continue;
+
+    const unitPrice = member.packageTotalPrice / member.packageTotalSessions;
+    totalRevenue += unitPrice;
+
+    const trainer = trainerById.get(s.trainerId);
+    if (trainer?.role === "owner" || trainer?.role === "super_admin") {
+      ownerProfit += unitPrice;
+      continue;
+    }
+    const rate = trainer?.commissionRate ?? 50;
+    const commission = unitPrice * (rate / 100);
+    ownerProfit += unitPrice - commission;
+    commissionPayable += commission;
+    const entry = byTrainerMap.get(s.trainerId) ?? { revenue: 0, commission: 0 };
+    entry.revenue += unitPrice;
+    entry.commission += commission;
+    byTrainerMap.set(s.trainerId, entry);
+  }
+
+  return {
+    totalRevenue,
+    ownerProfit,
+    commissionPayable,
+    byTrainer: [...byTrainerMap.entries()].map(([trainerId, v]) => ({ trainerId, ...v })),
   };
 }
 

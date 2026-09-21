@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { BookOpen, Camera } from "@phosphor-icons/react";
+import { BookOpen, Camera, Moon, Sun } from "@phosphor-icons/react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBranch } from "@/contexts/BranchContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/Button";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { updateOwnEmail, updateOwnPassword, updateOwnProfile, uploadAvatar } from "@/lib/api";
@@ -27,6 +28,7 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
 
 export function ProfileScreen() {
   const { profile, signOut, setAvatarUrl, patchProfile } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const { branches } = useBranch();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -207,6 +209,31 @@ export function ProfileScreen() {
               {savingPassword ? "Kaydediliyor..." : "Şifreyi güncelle"}
             </Button>
           </form>
+        </Card>
+
+        <Card title="Görünüm">
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => theme !== "light" && toggleTheme()}
+              className={`flex flex-1 items-center justify-center gap-2 rounded-[var(--radius-md)] border py-2.5 text-[14px] font-medium transition-colors duration-100 ${
+                theme === "light" ? "border-[var(--color-gold)] bg-[var(--color-gold-tint)] text-[var(--color-ink)]" : "border-[var(--color-line-strong)] text-[var(--color-ink-soft)]"
+              }`}
+            >
+              <Sun size={17} />
+              Açık
+            </button>
+            <button
+              type="button"
+              onClick={() => theme !== "dark" && toggleTheme()}
+              className={`flex flex-1 items-center justify-center gap-2 rounded-[var(--radius-md)] border py-2.5 text-[14px] font-medium transition-colors duration-100 ${
+                theme === "dark" ? "border-[var(--color-gold)] bg-[var(--color-gold-tint)] text-[var(--color-ink)]" : "border-[var(--color-line-strong)] text-[var(--color-ink-soft)]"
+              }`}
+            >
+              <Moon size={17} />
+              Koyu
+            </button>
+          </div>
         </Card>
 
         {isSupabaseConfigured && (
