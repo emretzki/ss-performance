@@ -16,7 +16,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { useIsDesktop } from "@/hooks/useMediaQuery";
 import type { TrainerVisual } from "./SlotCell";
 
-const ZOOM_KEY = "sportscience-calendar-zoom";
+const ZOOM_KEY = "gymkoc-calendar-zoom";
 
 interface SelectedSlot {
   day: Date;

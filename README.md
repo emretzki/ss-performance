@@ -11,7 +11,7 @@ npm install
 npm run dev
 ```
 
-Supabase henüz bağlı değilken (`.env` boşsa) uygulama otomatik olarak **mock mod**da çalışır: `localStorage`'da tutulan örnek verilerle (iki ayrı örnek salon — SportScience ve Fitness Farm — kendi şube/PT/üye/ders verileriyle) tam işlevsel şekilde kullanılabilir. Giriş ekranında demo hesaplardan biri seçilerek her rol ve her salon test edilebilir; "Yeni salon oluştur" ile yeni bir organizasyon da (mock modda) yaratılabilir.
+Supabase henüz bağlı değilken (`.env` boşsa) uygulama otomatik olarak **mock mod**da çalışır: `localStorage`'da tutulan örnek verilerle (iki ayrı örnek salon — Gymkoç Demo ve Fitness Farm — kendi şube/PT/üye/ders verileriyle) tam işlevsel şekilde kullanılabilir. Giriş ekranında demo hesaplardan biri seçilerek her rol ve her salon test edilebilir; "Yeni salon oluştur" ile yeni bir organizasyon da (mock modda) yaratılabilir.
 
 ## Supabase'e bağlama (sıfırdan kurulum)
 
@@ -46,10 +46,10 @@ Bundan sonra: yeni bir salon **/signup** ekranından kendi kendine (self-servis)
 
 Uygulama artık hostname'e göre davranıyor: `gymkoc.com` (kök) herkese açık, markasız bir karşılama sayfası gösterir; `salonadi.gymkoc.com` doğrudan o salonun (kendi logosu/rengiyle) giriş ekranına gider. Bunun için:
 
-1. Vercel projesinde **Settings → Domains** → `gymkoc.com` ekle, ardından ayrıca `*.gymkoc.com` (wildcard) ekle. Vercel her ikisi için de gereken DNS kayıtlarını (kök için A/ALIAS, wildcard için CNAME) ekranda gösterir.
-2. Bu kayıtları domain'i aldığın yerin (ya da Cloudflare gibi kullanıyorsan onun) DNS panelinden ekle.
-3. SSL sertifikaları (kök + wildcard) Vercel tarafından otomatik sağlanır, birkaç dakika sürebilir.
-4. `0006_subdomains.sql` migration'ını çalıştırdıktan sonra her organizasyonun bir `slug`'ı olur (isimden otomatik türetilir, örn. "SportScience" → `sportscience`). Mevcut organizasyonların slug'ını Table Editor → `organizations`'tan görüp istersen değiştirebilirsin.
+1. Vercel projesinde **Settings → Domains** → `gymkoc.com` ekle, ardından ayrıca `*.gymkoc.com` (wildcard) ekle.
+2. Wildcard domain için Vercel, domain'in **tüm nameserver'larının** Vercel'e devredilmesini ister (tek bir CNAME kaydı yeterli olmuyor). Domain kayıt firmanın panelinde domain'in Nameservers ayarını "Özel/Custom" yapıp `ns1.vercel-dns.com` ve `ns2.vercel-dns.com` olarak değiştir. Bu, domain'in tüm DNS yönetimini Vercel'e taşır — domain üzerinde başka bir servis (ör. e-posta/MX kaydı) varsa nameserver değişikliğinden sonra o kayıtları Vercel'in kendi DNS panelinden yeniden eklemen gerekir.
+3. SSL sertifikaları (kök + wildcard) nameserver değişikliği yayıldıktan sonra Vercel tarafından otomatik sağlanır; birkaç dakikadan birkaç saate sürebilir. Vercel → Domains sayfasında `*.gymkoc.com` yanında yeşil "Valid Configuration" yazana kadar bekle.
+4. `0006_subdomains.sql` migration'ını çalıştırdıktan sonra her organizasyonun bir `slug`'ı olur (isimden otomatik türetilir, örn. "Gymkoç Demo" → `gymkocdemo`). Mevcut organizasyonların slug'ını Table Editor → `organizations`'tan görüp istersen değiştirebilirsin.
 5. Yeni bir salon `/signup`'tan oluşturulduğunda otomatik olarak kendi `slug.gymkoc.com` adresine yönlendirilir.
 
 Not: Vercel'in varsayılan `*.vercel.app` adresi de çalışmaya devam eder (o zaman uygulama "kiracı yok" moduna düşer ve markasız giriş ekranını gösterir) — asıl kullanım artık her zaman kendi alt alan adı üzerinden olacak.

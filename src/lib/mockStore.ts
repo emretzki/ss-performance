@@ -1,7 +1,7 @@
 import type { Branch, GymSession, Member, Organization, Profile, Trainer, WorkoutType } from "./types";
 import { PT_BADGE_COLORS } from "./types";
 
-const STORAGE_KEY = "sportscience-mock-db-v2";
+const STORAGE_KEY = "gymkoc-mock-db-v2";
 
 interface MockDB {
   organizations: Organization[];
@@ -22,13 +22,13 @@ function todayIso(hour: number, minute: number, dayOffset = 0): string {
 
 function seed(): MockDB {
   const organizations: Organization[] = [
-    { id: "org1", name: "SportScience", slug: "sportscience", logoUrl: null, accentColor: "#96792C", ownerAuthId: "owner1", createdAt: new Date().toISOString() },
+    { id: "org1", name: "Gymkoç Demo", slug: "gymkocdemo", logoUrl: null, accentColor: "#96792C", ownerAuthId: "owner1", createdAt: new Date().toISOString() },
     { id: "org2", name: "Fitness Farm", slug: "fitnessfarm", logoUrl: null, accentColor: "#C99A2E", ownerAuthId: "owner2", createdAt: new Date().toISOString() },
   ];
 
   const branches: Branch[] = [
-    { id: "b1", organizationId: "org1", name: "SportScience Kadıköy", address: "Caferağa Mah. Moda Cad. No:12", maxConcurrentSessions: 3, createdAt: new Date().toISOString() },
-    { id: "b2", organizationId: "org1", name: "SportScience Ataşehir", address: "Barbaros Mah. Ünlü Sok. No:4", maxConcurrentSessions: 3, createdAt: new Date().toISOString() },
+    { id: "b1", organizationId: "org1", name: "Gymkoç Demo Kadıköy", address: "Caferağa Mah. Moda Cad. No:12", maxConcurrentSessions: 3, createdAt: new Date().toISOString() },
+    { id: "b2", organizationId: "org1", name: "Gymkoç Demo Ataşehir", address: "Barbaros Mah. Ünlü Sok. No:4", maxConcurrentSessions: 3, createdAt: new Date().toISOString() },
     { id: "b3", organizationId: "org2", name: "Fitness Farm Merkez", address: "Strength & Conditioning", maxConcurrentSessions: 2, createdAt: new Date().toISOString() },
   ];
 

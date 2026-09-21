@@ -1,4 +1,4 @@
-# SportScience Panel — Tasarım Yönü
+# Gymkoç Panel — Tasarım Yönü
 
 ## Konu ve iş
 

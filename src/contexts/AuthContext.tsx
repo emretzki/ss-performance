@@ -4,7 +4,7 @@ import { mockDB } from "@/lib/mockStore";
 import { clearHandoffHash, readSessionHandoffFromHash } from "@/lib/tenant";
 import type { Profile } from "@/lib/types";
 
-const SESSION_KEY = "sportscience-mock-session";
+const SESSION_KEY = "gymkoc-mock-session";
 
 interface AuthContextValue {
   profile: Profile | null;
