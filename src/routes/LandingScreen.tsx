@@ -176,6 +176,8 @@ function removeLandingAssets() {
   document.head.querySelectorAll(`[${LANDING_ASSET_ATTR}]`).forEach((el) => el.remove());
 }
 
+type IntroPhase = "hold" | "leaving" | "done";
+
 export function LandingScreen() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [loginOpen, setLoginOpen] = useState(false);
@@ -183,6 +185,19 @@ export function LandingScreen() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [introPhase, setIntroPhase] = useState<IntroPhase>(() =>
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "done" : "hold",
+  );
+
+  useEffect(() => {
+    if (introPhase === "done") return;
+    const toLeaving = setTimeout(() => setIntroPhase("leaving"), 500);
+    const toDone = setTimeout(() => setIntroPhase("done"), 500 + 900);
+    return () => {
+      clearTimeout(toLeaving);
+      clearTimeout(toDone);
+    };
+  }, [introPhase]);
 
   useEffect(() => {
     let cancelled = false;
@@ -330,6 +345,13 @@ export function LandingScreen() {
               </button>
             </form>
           </div>
+        </div>
+      )}
+      {introPhase !== "done" && (
+        <div className={`gk-intro${introPhase === "leaving" ? " gk-intro--leaving" : ""}`} aria-hidden="true">
+          <svg className="gk-intro__bolt" viewBox="0 0 32 32" fill="none">
+            <path d="M17 3 L8 18 L14.5 18 L13 29 L25 13 L18 13 Z" fill="#B8F028" />
+          </svg>
         </div>
       )}
     </>

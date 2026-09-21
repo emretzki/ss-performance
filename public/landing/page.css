@@ -12,6 +12,42 @@
   --gk-slate: #384858;
 }
 
+/* ---------------------------------------------------------------- intro */
+.gk-intro {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gk-navy-deep);
+  overflow: hidden;
+  transition: opacity 900ms var(--sc-ease-out);
+}
+.gk-intro__bolt {
+  width: min(130vmin, 1600px);
+  height: min(130vmin, 1600px);
+  flex: none;
+  filter: drop-shadow(0 0 120px rgba(184, 240, 40, 0.25));
+  animation: gk-intro-in 700ms var(--sc-ease-out) both;
+  transition: transform 900ms var(--sc-ease-out), opacity 900ms var(--sc-ease-out);
+}
+.gk-intro--leaving {
+  opacity: 0;
+  pointer-events: none;
+}
+.gk-intro--leaving .gk-intro__bolt {
+  transform: scale(1.3);
+  opacity: 0;
+}
+@keyframes gk-intro-in {
+  from { transform: scale(0.7); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gk-intro { display: none; }
+}
+
 /* ---------------------------------------------------------------- hero */
 .gk-hero {
   min-height: 100dvh;
