@@ -1,6 +1,6 @@
 import { NavLink } from "react-router-dom";
 import clsx from "clsx";
-import { Barbell, BookOpen, CalendarBlank, ChartLineUp, GearSix, SignOut, SquaresFour, UserCircle } from "@phosphor-icons/react";
+import { Barbell, BookOpen, CalendarBlank, ChartLineUp, GearSix, SignOut, SquaresFour, UserCircle, Users } from "@phosphor-icons/react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBranch } from "@/contexts/BranchContext";
 import { useOrganization } from "@/contexts/OrganizationContext";
@@ -73,6 +73,12 @@ export function Sidebar({ role }: SidebarProps) {
           <NavLink to="/team" className={LINK_CLASS}>
             <SquaresFour size={19} />
             Ekip
+          </NavLink>
+        )}
+        {role !== "trainer" && (
+          <NavLink to="/uyeler" className={LINK_CLASS}>
+            <Users size={19} />
+            Üyeler
           </NavLink>
         )}
         {role !== "trainer" && (

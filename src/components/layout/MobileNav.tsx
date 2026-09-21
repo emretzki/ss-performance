@@ -1,6 +1,6 @@
 import { NavLink } from "react-router-dom";
 import clsx from "clsx";
-import { CalendarBlank, ChartLineUp, SquaresFour, UserCircle } from "@phosphor-icons/react";
+import { CalendarBlank, ChartLineUp, SquaresFour, UserCircle, Users } from "@phosphor-icons/react";
 import type { Role } from "@/lib/types";
 
 interface MobileNavProps {
@@ -51,6 +51,17 @@ export function MobileNav({ role }: MobileNavProps) {
             <>
               <SquaresFour size={22} weight={isActive ? "fill" : "regular"} />
               Ekip
+            </>
+          )}
+        </NavLink>
+      )}
+
+      {role !== "trainer" && (
+        <NavLink to="/uyeler" className={ITEM_CLASS}>
+          {({ isActive }) => (
+            <>
+              <Users size={22} weight={isActive ? "fill" : "regular"} />
+              Üyeler
             </>
           )}
         </NavLink>

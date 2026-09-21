@@ -106,9 +106,7 @@ export function GuideScreen() {
                 belirleyebilir.
               </p>
               <p>
-                <strong>Üyeler</strong> sekmesinden salonunuza kayıtlı üyeleri ekleyip not düşebilirsin (üyeler ayrı bir
-                giriş yapmaz, sadece ders kaydında isim olarak görünür). <strong>Şubeler</strong> sekmesinden yeni bir şube
-                açabilirsin.
+                <strong>Şubeler</strong> sekmesinden yeni bir şube açabilirsin.
               </p>
               <p>
                 Bir PT'ye tıklayınca <strong>prim oranını</strong> ayarlayabilirsin — bu PT'nin verdiği bir dersten alacağı
@@ -117,7 +115,11 @@ export function GuideScreen() {
               </p>
             </Section>
 
-            <Section title="Üye paketleri">
+            <Section title="Üyeler ve paketleri">
+              <p>
+                Sol menüden <strong>Üyeler</strong>'e gir, "Üye ekle"ye bas. Üyeler ayrı bir giriş yapmaz, sadece ders
+                kaydında isim olarak görünür.
+              </p>
               <p>
                 Bir üyeye tıklayınca <strong>paket adı, toplam ücret ve toplam ders sayısı</strong> girebilirsin — birim
                 fiyat (ücret ÷ ders sayısı) otomatik hesaplanır. Üye listesinde her satırda kaç ders kaldığını gösteren

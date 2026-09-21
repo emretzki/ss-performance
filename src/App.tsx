@@ -17,6 +17,7 @@ import { CalendarScreen } from "@/components/calendar/CalendarScreen";
 import { OverviewScreen } from "@/routes/OverviewScreen";
 import { ReportsScreen } from "@/routes/ReportsScreen";
 import { TeamScreen } from "@/routes/TeamScreen";
+import { MembersScreen } from "@/routes/MembersScreen";
 import { SettingsScreen } from "@/routes/SettingsScreen";
 import { ProfileScreen } from "@/routes/ProfileScreen";
 import { GuideScreen } from "@/routes/GuideScreen";
@@ -87,6 +88,7 @@ export default function App() {
         <Route path="/overview" element={<OverviewScreen />} />
         <Route path="/reports" element={<ReportsScreen />} />
         <Route path="/team" element={<TeamScreen />} />
+        <Route path="/uyeler" element={<MembersScreen />} />
         <Route path="/settings" element={<SettingsScreen />} />
         <Route path="/profile" element={<ProfileScreen />} />
         <Route path="/rehber" element={<GuideScreen />} />

@@ -5,16 +5,14 @@ import clsx from "clsx";
 import { GearSix, Plus } from "@phosphor-icons/react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBranch } from "@/contexts/BranchContext";
-import { listBranches, listMembers, listTrainers } from "@/lib/api";
+import { listBranches, listTrainers } from "@/lib/api";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { PackageProgressBar } from "@/components/ui/PackageProgressBar";
 import { AddBranchForm } from "@/components/team/AddBranchForm";
-import { AddMemberForm } from "@/components/team/AddMemberForm";
 import { AddPersonForm } from "@/components/team/AddPersonForm";
 import { EditTrainerForm } from "@/components/team/EditTrainerForm";
-import type { Member, Trainer } from "@/lib/types";
+import type { Trainer } from "@/lib/types";
 
-type Tab = "trainers" | "members" | "branches";
+type Tab = "trainers" | "branches";
 
 export function TeamScreen() {
   const { profile } = useAuth();
@@ -23,19 +21,12 @@ export function TeamScreen() {
   const canManage = profile?.role === "super_admin" || profile?.role === "owner";
   const [tab, setTab] = useState<Tab>(canManage && branches.length === 0 ? "branches" : "trainers");
   const [openModal, setOpenModal] = useState<Tab | null>(null);
-  const [editingMember, setEditingMember] = useState<Member | null>(null);
   const [editingTrainer, setEditingTrainer] = useState<Trainer | null>(null);
 
   const { data: trainers = [] } = useQuery({
     queryKey: ["trainers", activeBranchId],
     queryFn: () => listTrainers(activeBranchId as string),
     enabled: Boolean(activeBranchId) && tab === "trainers",
-  });
-
-  const { data: members = [] } = useQuery({
-    queryKey: ["members", activeBranchId],
-    queryFn: () => listMembers(activeBranchId as string),
-    enabled: Boolean(activeBranchId) && tab === "members",
   });
 
   const { data: allBranches = [] } = useQuery({
@@ -50,16 +41,16 @@ export function TeamScreen() {
         <div className="flex items-start justify-between gap-3">
           <div>
             <h1 className="font-display text-[24px] font-bold text-[var(--color-ink)]">Ekip</h1>
-            <p className="mt-1 text-[13px] text-[var(--color-ash)]">PT ve üye kayıtları.</p>
+            <p className="mt-1 text-[13px] text-[var(--color-ash)]">PT ve şube kayıtları.</p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            {canManage && tab !== "branches" && activeBranchId && (
+            {canManage && tab === "trainers" && activeBranchId && (
               <button
                 onClick={() => setOpenModal(tab)}
                 className="flex h-9 items-center gap-1.5 rounded-full bg-[var(--color-ink)] px-3.5 text-[13px] font-medium text-[var(--color-paper)]"
               >
                 <Plus size={15} weight="bold" />
-                {tab === "trainers" ? "PT ekle" : "Üye ekle"}
+                PT ekle
               </button>
             )}
             {canManage && tab === "branches" && (
@@ -84,7 +75,7 @@ export function TeamScreen() {
         </div>
 
         <div className="flex rounded-[var(--radius-md)] border border-[var(--color-line-strong)] p-0.5">
-          {(["trainers", "members", ...(canManage ? (["branches"] as const) : [])] as Tab[]).map((t) => (
+          {(["trainers", ...(canManage ? (["branches"] as const) : [])] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -93,7 +84,7 @@ export function TeamScreen() {
                 tab === t ? "bg-[var(--color-ink)] text-[var(--color-paper)]" : "text-[var(--color-ink-soft)]",
               )}
             >
-              {t === "trainers" ? "PT'ler" : t === "members" ? "Üyeler" : "Şubeler"}
+              {t === "trainers" ? "PT'ler" : "Şubeler"}
             </button>
           ))}
         </div>
@@ -117,40 +108,6 @@ export function TeamScreen() {
                   </div>
                   {t.role === "trainer" && (
                     <span className="shrink-0 text-[12px] font-medium text-[var(--color-ink-soft)]">%{t.commissionRate} prim</span>
-                  )}
-                </button>
-              ))}
-            </div>
-          ))}
-
-        {tab === "members" &&
-          (members.length === 0 ? (
-            <EmptyState message="Bu şubede henüz üye kaydı yok." />
-          ) : (
-            <div className="flex flex-col divide-y divide-[var(--color-line)] rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)]">
-              {members.map((m) => (
-                <button
-                  key={m.id}
-                  onClick={() => canManage && setEditingMember(m)}
-                  disabled={!canManage}
-                  className="flex w-full flex-col gap-2 px-4 py-3 text-left disabled:cursor-default"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[var(--color-ash)]" />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[14px] font-medium text-[var(--color-ink)]">{m.fullName}</p>
-                      <p className="truncate text-[12px] text-[var(--color-ash)]">
-                        {m.packageName ?? m.phone ?? "Telefon eklenmedi"}
-                      </p>
-                    </div>
-                    {m.packageTotalSessions && (
-                      <span className="shrink-0 text-[12px] font-medium text-[var(--color-ink-soft)]">
-                        {Math.max(0, m.packageTotalSessions - m.packageSessionsUsed)} ders kaldı
-                      </span>
-                    )}
-                  </div>
-                  {Boolean(m.packageTotalSessions) && (
-                    <PackageProgressBar used={m.packageSessionsUsed} total={m.packageTotalSessions!} />
                   )}
                 </button>
               ))}
@@ -183,28 +140,11 @@ export function TeamScreen() {
         />
       )}
 
-      {openModal === "members" && activeBranchId && (
-        <AddMemberForm
-          branchId={activeBranchId}
-          onClose={() => setOpenModal(null)}
-          onCreated={() => qc.invalidateQueries({ queryKey: ["members", activeBranchId] })}
-        />
-      )}
-
       {openModal === "branches" && profile && (
         <AddBranchForm
           organizationId={profile.organizationId}
           onClose={() => setOpenModal(null)}
           onCreated={() => qc.invalidateQueries({ queryKey: ["branches"] })}
-        />
-      )}
-
-      {editingMember && activeBranchId && (
-        <AddMemberForm
-          branchId={activeBranchId}
-          member={editingMember}
-          onClose={() => setEditingMember(null)}
-          onCreated={() => qc.invalidateQueries({ queryKey: ["members", activeBranchId] })}
         />
       )}
 
