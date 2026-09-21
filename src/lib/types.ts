@@ -78,10 +78,15 @@ export interface Member {
   packagePaidAt: string | null;
 }
 
-/** One payment event — created whenever a member's package is first set or
- * renewed (never on a mere correction to the same package). This is what
- * revenue reporting sums, not live session activity, so a later renewal can
- * never rewrite an earlier month's ciro. */
+/** One package purchase/renewal event — this is both the revenue ledger
+ * (cash-basis: what reporting sums, never rewritten by a later renewal) and
+ * the package history a member sees. Lifecycle:
+ *   "active"    — the package `Member.package*` currently tracks
+ *   "upcoming"  — paid for in advance, queued, not started yet
+ *   "completed" — finished and archived; sessionsUsed freezes its final count
+ * At most one "active" row per member — session logging (server-side
+ * trigger in real mode, bumpMemberUsage in mock mode) archives it and
+ * promotes the earliest "upcoming" row automatically once sessions run out. */
 export interface Payment {
   id: string;
   memberId: string;
@@ -91,6 +96,10 @@ export interface Payment {
   totalSessions: number | null;
   paidAt: string; // date, YYYY-MM-DD
   createdAt: string;
+  status: "active" | "upcoming" | "completed";
+  /** Snapshot of Member.packageSessionsUsed at the moment this package was
+   * archived. Null while "active"/"upcoming". */
+  sessionsUsed: number | null;
 }
 
 /** A standing monthly cost (kira, elektrik, vb.) the owner enters once and

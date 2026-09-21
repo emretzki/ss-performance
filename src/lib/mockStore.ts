@@ -1,7 +1,7 @@
 import type { Branch, BranchExpense, GymSession, Member, Organization, Payment, Profile, Trainer, WorkoutType } from "./types";
 import { PT_BADGE_COLORS } from "./types";
 
-const STORAGE_KEY = "gymkoc-mock-db-v3";
+const STORAGE_KEY = "gymkoc-mock-db-v4";
 
 interface MockDB {
   organizations: Organization[];
@@ -65,8 +65,8 @@ function seed(): MockDB {
   ];
 
   const payments: Payment[] = [
-    { id: "pay1", memberId: "m1", branchId: "b1", amount: 6400, packageName: "8 Ders Paketi", totalSessions: 8, paidAt: todayDate, createdAt: new Date().toISOString() },
-    { id: "pay2", memberId: "m2", branchId: "b1", amount: 9000, packageName: "12 Ders Paketi", totalSessions: 12, paidAt: todayDate, createdAt: new Date().toISOString() },
+    { id: "pay1", memberId: "m1", branchId: "b1", amount: 6400, packageName: "8 Ders Paketi", totalSessions: 8, paidAt: todayDate, createdAt: new Date().toISOString(), status: "active", sessionsUsed: null },
+    { id: "pay2", memberId: "m2", branchId: "b1", amount: 9000, packageName: "12 Ders Paketi", totalSessions: 12, paidAt: todayDate, createdAt: new Date().toISOString(), status: "active", sessionsUsed: null },
   ];
 
   const branchExpenses: BranchExpense[] = [{ id: "exp1", branchId: "b1", name: "Kira", amount: 30000, createdAt: new Date().toISOString() }];
@@ -118,6 +118,44 @@ function bumpMemberUsage(memberId: string, delta: 1 | -1) {
     members: db.members.map((m) =>
       m.id === memberId ? { ...m, packageSessionsUsed: Math.max(0, m.packageSessionsUsed + delta) } : m,
     ),
+  };
+  completeAndAdvancePackage(memberId);
+}
+
+// Mirrors the real DB's complete_and_advance_package(): once a member's
+// active package runs out of sessions, archive it (freezing sessionsUsed)
+// and, if a package was paid for in advance, promote the earliest queued
+// "upcoming" row to "active" in its place.
+function completeAndAdvancePackage(memberId: string) {
+  const member = db.members.find((m) => m.id === memberId);
+  if (!member || !member.packageTotalSessions || member.packageSessionsUsed < member.packageTotalSessions) return;
+
+  const active = db.payments.find((p) => p.memberId === memberId && p.status === "active");
+  const nextUpcoming = [...db.payments]
+    .filter((p) => p.memberId === memberId && p.status === "upcoming")
+    .sort((a, b) => a.paidAt.localeCompare(b.paidAt) || a.createdAt.localeCompare(b.createdAt))[0];
+
+  db = {
+    ...db,
+    payments: db.payments.map((p) => {
+      if (active && p.id === active.id) return { ...p, status: "completed", sessionsUsed: member.packageSessionsUsed };
+      if (nextUpcoming && p.id === nextUpcoming.id) return { ...p, status: "active" };
+      return p;
+    }),
+    members: nextUpcoming
+      ? db.members.map((m) =>
+          m.id === memberId
+            ? {
+                ...m,
+                packageName: nextUpcoming.packageName,
+                packageTotalPrice: nextUpcoming.amount,
+                packageTotalSessions: nextUpcoming.totalSessions,
+                packageSessionsUsed: 0,
+                packagePaidAt: nextUpcoming.paidAt,
+              }
+            : m,
+        )
+      : db.members,
   };
 }
 
@@ -193,6 +231,45 @@ export const mockDB = {
   },
   addPayment(payment: Payment) {
     db = { ...db, payments: [...db.payments, payment] };
+    persist();
+  },
+  // Archives whichever payment is currently active for this member (freezing
+  // its sessionsUsed snapshot) and makes `payment` the new active one right
+  // away — an explicit early switch, distinct from complete_and_advance_package
+  // which only fires when sessions actually run out.
+  startPackageNow(memberId: string, payment: Payment) {
+    const member = db.members.find((m) => m.id === memberId);
+    db = {
+      ...db,
+      payments: [
+        ...db.payments.map((p) =>
+          p.memberId === memberId && p.status === "active"
+            ? { ...p, status: "completed" as const, sessionsUsed: member?.packageSessionsUsed ?? 0 }
+            : p,
+        ),
+        payment,
+      ],
+      members: db.members.map((m) =>
+        m.id === memberId
+          ? {
+              ...m,
+              packageName: payment.packageName,
+              packageTotalPrice: payment.amount,
+              packageTotalSessions: payment.totalSessions,
+              packageSessionsUsed: 0,
+              packagePaidAt: payment.paidAt,
+            }
+          : m,
+      ),
+    };
+    persist();
+  },
+  queuePackage(payment: Payment) {
+    db = { ...db, payments: [...db.payments, payment] };
+    persist();
+  },
+  deletePayment(id: string) {
+    db = { ...db, payments: db.payments.filter((p) => p.id !== id) };
     persist();
   },
   addBranchExpense(expense: BranchExpense) {

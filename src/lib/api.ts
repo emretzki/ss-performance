@@ -490,18 +490,12 @@ export interface UpdateMemberInput {
   fullName?: string;
   phone?: string | null;
   notes?: string | null;
+  /** Plain corrections to the current package's own fields — a typo fix, not
+   * a new purchase. Never touches the payments ledger or the usage counter;
+   * use addMemberPackage for an actual new, renewed, or queued package. */
   packageName?: string | null;
   packageTotalPrice?: number | null;
   packageTotalSessions?: number | null;
-  /** Date the (new or renewed) package was paid for. Only meaningful together
-   * with resetPackageUsage — that's the only time a payment row is created. */
-  packagePaidAt?: string | null;
-  /** Only set when explicitly assigning a new package or renewing — never as
-   * a side effect of an unrelated field edit. Creates a payment record (ciro
-   * is cash-basis: it counts toward whatever month this date falls in, not
-   * whenever the package's sessions end up happening) and resets the usage
-   * counter to 0. */
-  resetPackageUsage?: boolean;
 }
 
 export async function updateMember(id: string, input: UpdateMemberInput): Promise<Member> {
@@ -513,25 +507,9 @@ export async function updateMember(id: string, input: UpdateMemberInput): Promis
     if (input.packageName !== undefined) patch.package_name = input.packageName;
     if (input.packageTotalPrice !== undefined) patch.package_total_price = input.packageTotalPrice;
     if (input.packageTotalSessions !== undefined) patch.package_total_sessions = input.packageTotalSessions;
-    if (input.resetPackageUsage) {
-      patch.package_sessions_used = 0;
-      patch.package_paid_at = input.packagePaidAt ?? new Date().toISOString().slice(0, 10);
-    }
     const { data, error } = await supabase.from("members").update(patch).eq("id", id).select().single();
     if (error) throw error;
-    const updated = mapMember(data);
-    if (input.resetPackageUsage && updated.packageTotalPrice) {
-      const { error: payError } = await supabase.from("payments").insert({
-        member_id: id,
-        branch_id: updated.branchId,
-        amount: updated.packageTotalPrice,
-        package_name: updated.packageName,
-        total_sessions: updated.packageTotalSessions,
-        paid_at: updated.packagePaidAt,
-      });
-      if (payError) throw payError;
-    }
-    return updated;
+    return mapMember(data);
   }
   mockDB.updateMember(id, {
     ...(input.fullName !== undefined && { fullName: input.fullName }),
@@ -540,25 +518,9 @@ export async function updateMember(id: string, input: UpdateMemberInput): Promis
     ...(input.packageName !== undefined && { packageName: input.packageName }),
     ...(input.packageTotalPrice !== undefined && { packageTotalPrice: input.packageTotalPrice }),
     ...(input.packageTotalSessions !== undefined && { packageTotalSessions: input.packageTotalSessions }),
-    ...(input.resetPackageUsage && {
-      packageSessionsUsed: 0,
-      packagePaidAt: input.packagePaidAt ?? new Date().toISOString().slice(0, 10),
-    }),
   });
   const updated = mockDB.get().members.find((m) => m.id === id);
   if (!updated) throw new Error("Üye bulunamadı.");
-  if (input.resetPackageUsage && updated.packageTotalPrice) {
-    mockDB.addPayment({
-      id: `pay${Date.now()}`,
-      memberId: id,
-      branchId: updated.branchId,
-      amount: updated.packageTotalPrice,
-      packageName: updated.packageName,
-      totalSessions: updated.packageTotalSessions,
-      paidAt: updated.packagePaidAt ?? new Date().toISOString().slice(0, 10),
-      createdAt: new Date().toISOString(),
-    });
-  }
   return updated;
 }
 
@@ -576,9 +538,14 @@ function mapPayment(r: Record<string, unknown>): Payment {
     totalSessions: (r.total_sessions as number | null) ?? null,
     paidAt: r.paid_at as string,
     createdAt: r.created_at as string,
+    status: r.status as Payment["status"],
+    sessionsUsed: (r.sessions_used as number | null) ?? null,
   };
 }
 
+// Cash-basis ciro: every payment counts toward the month it was paid in,
+// regardless of lifecycle status — a package paid for in advance still
+// counts as revenue now, even though it won't become "active" until later.
 export async function listPayments(branchId: string, from: Date, to: Date): Promise<Payment[]> {
   const fromStr = from.toISOString().slice(0, 10);
   const toStr = to.toISOString().slice(0, 10);
@@ -593,6 +560,109 @@ export async function listPayments(branchId: string, from: Date, to: Date): Prom
     return data.map(mapPayment);
   }
   return mockDB.get().payments.filter((p) => p.branchId === branchId && p.paidAt >= fromStr && p.paidAt < toStr);
+}
+
+/** A member's full package history — the currently active package, any
+ * queued upcoming ones, and archived completed ones — newest paid_at first. */
+export async function listMemberPackageHistory(memberId: string): Promise<Payment[]> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from("payments")
+      .select("*")
+      .eq("member_id", memberId)
+      .order("paid_at", { ascending: false })
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return data.map(mapPayment);
+  }
+  return [...mockDB.get().payments]
+    .filter((p) => p.memberId === memberId)
+    .sort((a, b) => b.paidAt.localeCompare(a.paidAt) || b.createdAt.localeCompare(a.createdAt));
+}
+
+export interface AddMemberPackageInput {
+  memberId: string;
+  branchId: string;
+  name: string;
+  totalPrice: number;
+  totalSessions: number;
+  paidAt: string;
+  /** true: starts immediately, archiving whatever package is currently
+   * active. false: queued as "upcoming" — paid for now, doesn't touch the
+   * member's active package until it naturally runs out. */
+  startNow: boolean;
+}
+
+/** The one way to give a member a new package — first-ever, a renewal, or a
+ * paid-in-advance one queued for later. Never call updateMember for this:
+ * that's for correcting an existing package's own fields, not purchasing a
+ * new one. */
+export async function addMemberPackage(input: AddMemberPackageInput): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    if (input.startNow) {
+      const { data: memberRow, error: fetchErr } = await supabase
+        .from("members")
+        .select("package_sessions_used")
+        .eq("id", input.memberId)
+        .single();
+      if (fetchErr) throw fetchErr;
+      const { error: archiveErr } = await supabase
+        .from("payments")
+        .update({ status: "completed", sessions_used: memberRow.package_sessions_used })
+        .eq("member_id", input.memberId)
+        .eq("status", "active");
+      if (archiveErr) throw archiveErr;
+      const { error: memberErr } = await supabase
+        .from("members")
+        .update({
+          package_name: input.name,
+          package_total_price: input.totalPrice,
+          package_total_sessions: input.totalSessions,
+          package_sessions_used: 0,
+          package_paid_at: input.paidAt,
+        })
+        .eq("id", input.memberId);
+      if (memberErr) throw memberErr;
+    }
+    const { error: insertErr } = await supabase.from("payments").insert({
+      member_id: input.memberId,
+      branch_id: input.branchId,
+      amount: input.totalPrice,
+      package_name: input.name,
+      total_sessions: input.totalSessions,
+      paid_at: input.paidAt,
+      status: input.startNow ? "active" : "upcoming",
+    });
+    if (insertErr) throw insertErr;
+    return;
+  }
+
+  const payment: Payment = {
+    id: `pay${Date.now()}`,
+    memberId: input.memberId,
+    branchId: input.branchId,
+    amount: input.totalPrice,
+    packageName: input.name,
+    totalSessions: input.totalSessions,
+    paidAt: input.paidAt,
+    createdAt: new Date().toISOString(),
+    status: input.startNow ? "active" : "upcoming",
+    sessionsUsed: null,
+  };
+  if (input.startNow) mockDB.startPackageNow(input.memberId, payment);
+  else mockDB.queuePackage(payment);
+}
+
+/** Cancels a package that was paid for in advance but hasn't started yet.
+ * Only meaningful for "upcoming" rows — an active or completed one is real
+ * history and isn't deletable from here. */
+export async function deleteUpcomingPackage(paymentId: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase.from("payments").delete().eq("id", paymentId).eq("status", "upcoming");
+    if (error) throw error;
+    return;
+  }
+  mockDB.deletePayment(paymentId);
 }
 
 function mapBranchExpense(r: Record<string, unknown>): BranchExpense {

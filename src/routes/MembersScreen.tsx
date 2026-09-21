@@ -147,7 +147,7 @@ export function MembersScreen() {
       {editingMember && activeBranchId && (
         <AddMemberForm
           branchId={activeBranchId}
-          member={editingMember}
+          member={members.find((m) => m.id === editingMember.id) ?? editingMember}
           onClose={() => setEditingMember(null)}
           onCreated={() => qc.invalidateQueries({ queryKey: ["members", activeBranchId] })}
         />

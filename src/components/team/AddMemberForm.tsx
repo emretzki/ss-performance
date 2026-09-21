@@ -1,12 +1,22 @@
 import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Trash } from "@phosphor-icons/react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { PackageProgressBar } from "@/components/ui/PackageProgressBar";
-import { createMember, updateMember } from "@/lib/api";
+import { addMemberPackage, createMember, deleteUpcomingPackage, listMemberPackageHistory, updateMember } from "@/lib/api";
 import type { Member } from "@/lib/types";
 
 const inputClass =
   "h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-line-strong)] bg-[var(--color-surface)] px-3 text-[14px] text-[var(--color-ink)] focus:border-[var(--color-gold)]";
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("tr-TR");
+}
+
+function formatTL(n: number): string {
+  return `${Math.round(n).toLocaleString("tr-TR")} TL`;
+}
 
 interface AddMemberFormProps {
   branchId: string;
@@ -18,6 +28,7 @@ interface AddMemberFormProps {
 
 export function AddMemberForm({ branchId, member, onClose, onCreated }: AddMemberFormProps) {
   const isEdit = Boolean(member);
+  const qc = useQueryClient();
   const [fullName, setFullName] = useState(member?.fullName ?? "");
   const [phone, setPhone] = useState(member?.phone ?? "");
   const [notes, setNotes] = useState(member?.notes ?? "");
@@ -28,21 +39,36 @@ export function AddMemberForm({ branchId, member, onClose, onCreated }: AddMembe
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [newPkgOpen, setNewPkgOpen] = useState(false);
+  const [newPkgName, setNewPkgName] = useState("");
+  const [newPkgPrice, setNewPkgPrice] = useState("");
+  const [newPkgSessions, setNewPkgSessions] = useState("");
+  const [newPkgPaidAt, setNewPkgPaidAt] = useState(() => new Date().toISOString().slice(0, 10));
+  const [savingNewPkg, setSavingNewPkg] = useState(false);
+  // Mirrors member.packageSessionsUsed, but resettable locally: the "start
+  // now" action below resets usage to 0 while this modal stays open, before
+  // the parent's stale member prop has a chance to refetch and reflect it.
+  const [sessionsUsedLocal, setSessionsUsedLocal] = useState(member?.packageSessionsUsed ?? 0);
+
   const totalSessionsNum = Number(packageTotalSessions) || 0;
   const totalPriceNum = Number(packageTotalPrice) || 0;
   const unitPrice = totalSessionsNum > 0 ? totalPriceNum / totalSessionsNum : 0;
   const hadPackage = isEdit && (member?.packageTotalSessions ?? 0) > 0;
-  const packageChanged =
-    isEdit &&
-    (packageName !== (member?.packageName ?? "") ||
-      totalPriceNum !== (member?.packageTotalPrice ?? 0) ||
-      totalSessionsNum !== (member?.packageTotalSessions ?? 0));
-  // A member with no prior package has nothing to "continue" — treat any
-  // package entered as a fresh assignment without asking, and only ask when
-  // an existing package's numbers are being changed.
-  const showPackageChoice = hadPackage && packageChanged;
 
-  async function handleSubmit(resetUsage: boolean) {
+  const { data: history = [] } = useQuery({
+    queryKey: ["member-packages", member?.id],
+    queryFn: () => listMemberPackageHistory(member!.id),
+    enabled: Boolean(member?.id),
+  });
+  const upcoming = history.filter((p) => p.status === "upcoming");
+  const completed = history.filter((p) => p.status === "completed");
+
+  function invalidateAll() {
+    qc.invalidateQueries({ queryKey: ["members", branchId] });
+    if (member) qc.invalidateQueries({ queryKey: ["member-packages", member.id] });
+  }
+
+  async function handleSubmit() {
     if (!fullName.trim()) {
       setError("Üye adı gerekli.");
       return;
@@ -59,15 +85,29 @@ export function AddMemberForm({ branchId, member, onClose, onCreated }: AddMembe
           fullName: fullName.trim(),
           phone: phone.trim() || null,
           notes: notes.trim() || null,
-          packageName: packageName.trim() || null,
-          packageTotalPrice: totalPriceNum || null,
-          packageTotalSessions: totalSessionsNum || null,
-          resetPackageUsage: resetUsage,
-          packagePaidAt: resetUsage ? paidAt : undefined,
+          ...(hadPackage && {
+            packageName: packageName.trim() || null,
+            packageTotalPrice: totalPriceNum || null,
+            packageTotalSessions: totalSessionsNum || null,
+          }),
         });
+        // A member with no prior package has nothing to correct — filling in
+        // package fields here is a first-ever assignment, not an edit.
+        if (!hadPackage && totalSessionsNum > 0 && totalPriceNum > 0 && packageName.trim()) {
+          await addMemberPackage({
+            memberId: member.id,
+            branchId,
+            name: packageName.trim(),
+            totalPrice: totalPriceNum,
+            totalSessions: totalSessionsNum,
+            paidAt,
+            startNow: true,
+          });
+        }
       } else {
         await createMember({ branchId, fullName: fullName.trim(), phone: phone.trim() || null, notes: notes.trim() || null });
       }
+      invalidateAll();
       onCreated();
       onClose();
     } catch {
@@ -75,6 +115,47 @@ export function AddMemberForm({ branchId, member, onClose, onCreated }: AddMembe
     } finally {
       setSaving(false);
     }
+  }
+
+  async function handleAddNewPackage(startNow: boolean) {
+    const price = Number(newPkgPrice) || 0;
+    const sessions = Number(newPkgSessions) || 0;
+    if (!newPkgName.trim() || !price || !sessions || !member) return;
+    setSavingNewPkg(true);
+    try {
+      await addMemberPackage({
+        memberId: member.id,
+        branchId,
+        name: newPkgName.trim(),
+        totalPrice: price,
+        totalSessions: sessions,
+        paidAt: newPkgPaidAt,
+        startNow,
+      });
+      if (startNow) {
+        // The modal stays open after this (unlike the main Kaydet flow), so
+        // sync the "active package" fields locally — they're controlled
+        // inputs seeded from `member` only once at mount, and the parent's
+        // member prop won't reflect this until it refetches.
+        setPackageName(newPkgName.trim());
+        setPackageTotalPrice(String(price));
+        setPackageTotalSessions(String(sessions));
+        setSessionsUsedLocal(0);
+      }
+      setNewPkgName("");
+      setNewPkgPrice("");
+      setNewPkgSessions("");
+      setNewPkgOpen(false);
+      invalidateAll();
+      onCreated();
+    } finally {
+      setSavingNewPkg(false);
+    }
+  }
+
+  async function handleDeleteUpcoming(id: string) {
+    await deleteUpcomingPackage(id);
+    invalidateAll();
   }
 
   return (
@@ -94,7 +175,7 @@ export function AddMemberForm({ branchId, member, onClose, onCreated }: AddMembe
         </div>
 
         <div className="mt-1 flex flex-col gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface-2)] p-3">
-          <p className="text-[13px] font-medium text-[var(--color-ink-soft)]">Paket</p>
+          <p className="text-[13px] font-medium text-[var(--color-ink-soft)]">{hadPackage ? "Aktif paket" : "Paket"}</p>
           <div>
             <label className="mb-1.5 block text-[12px] text-[var(--color-ash)]">Paket adı</label>
             <input value={packageName} onChange={(e) => setPackageName(e.target.value)} placeholder="Örn. 8 Ders Paketi" className={inputClass} />
@@ -126,7 +207,7 @@ export function AddMemberForm({ branchId, member, onClose, onCreated }: AddMembe
               Birim fiyat: <span className="font-medium text-[var(--color-ink)]">{unitPrice.toLocaleString("tr-TR", { maximumFractionDigits: 0 })} TL</span> / ders
             </p>
           )}
-          {isEdit && (!hadPackage || showPackageChoice) && totalSessionsNum > 0 && (
+          {isEdit && !hadPackage && totalSessionsNum > 0 && (
             <div>
               <label className="mb-1.5 block text-[12px] text-[var(--color-ash)]">Ödeme tarihi</label>
               <input type="date" value={paidAt} onChange={(e) => setPaidAt(e.target.value)} className={inputClass} />
@@ -135,32 +216,105 @@ export function AddMemberForm({ branchId, member, onClose, onCreated }: AddMembe
               </p>
             </div>
           )}
-          {isEdit && (member?.packageTotalSessions ?? 0) > 0 && (
-            <PackageProgressBar used={member!.packageSessionsUsed} total={member!.packageTotalSessions!} size="lg" />
+          {hadPackage && <PackageProgressBar used={sessionsUsedLocal} total={totalSessionsNum} size="lg" />}
+          {!hadPackage && (
+            <p className="text-[12px] text-[var(--color-ash)]">
+              Paket adı, ücret ve ders sayısını doldurup kaydettiğinde bu üyenin ilk paketi başlar.
+            </p>
           )}
         </div>
 
-        {error && <p className="text-[13px] text-[var(--color-danger)]">{error}</p>}
+        {hadPackage && (
+          <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] p-3">
+            {!newPkgOpen ? (
+              <Button variant="secondary" size="md" className="w-full" onClick={() => setNewPkgOpen(true)}>
+                + Yeni paket ekle
+              </Button>
+            ) : (
+              <div className="flex flex-col gap-2.5">
+                <p className="text-[13px] font-medium text-[var(--color-ink-soft)]">Yeni paket</p>
+                <input value={newPkgName} onChange={(e) => setNewPkgName(e.target.value)} placeholder="Paket adı" className={inputClass} />
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    min={0}
+                    value={newPkgPrice}
+                    onChange={(e) => setNewPkgPrice(e.target.value)}
+                    placeholder="Toplam ücret (TL)"
+                    className={inputClass}
+                  />
+                  <input
+                    type="number"
+                    min={0}
+                    value={newPkgSessions}
+                    onChange={(e) => setNewPkgSessions(e.target.value)}
+                    placeholder="Toplam ders"
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-[12px] text-[var(--color-ash)]">Ödeme tarihi</label>
+                  <input type="date" value={newPkgPaidAt} onChange={(e) => setNewPkgPaidAt(e.target.value)} className={inputClass} />
+                </div>
+                <p className="text-[12px] text-[var(--color-ash)]">
+                  Mevcut paket henüz bitmediyse <strong>gelecek paket</strong> olarak ekle — ciroya hemen yazılır, ama bu üyenin
+                  ders sayacı mevcut paket bitene kadar değişmez.
+                </p>
+                <div className="flex gap-2">
+                  <Button variant="secondary" className="flex-1" onClick={() => handleAddNewPackage(false)} disabled={savingNewPkg}>
+                    Gelecek paket olarak ekle
+                  </Button>
+                  <Button className="flex-1" onClick={() => handleAddNewPackage(true)} disabled={savingNewPkg}>
+                    Hemen başlat
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
-        {showPackageChoice ? (
+        {upcoming.length > 0 && (
           <div className="flex flex-col gap-2">
-            <p className="text-[12px] text-[var(--color-ash)]">
-              Paket bilgilerini değiştirdin. Bu mevcut paketin devamı mı, yoksa yeni bir paket mi (sayaç sıfırlanır, ciroya yeni ödeme olarak yazılır)?
-            </p>
-            <div className="flex gap-2">
-              <Button variant="secondary" className="flex-1" onClick={() => handleSubmit(false)} disabled={saving}>
-                Devamı
-              </Button>
-              <Button className="flex-1" onClick={() => handleSubmit(true)} disabled={saving}>
-                Yeni paket başlat
-              </Button>
+            <p className="text-[13px] font-medium text-[var(--color-ink-soft)]">Gelecek paketler</p>
+            <div className="flex flex-col divide-y divide-[var(--color-line)] rounded-[var(--radius-md)] border border-[var(--color-line)]">
+              {upcoming.map((p) => (
+                <div key={p.id} className="flex items-center gap-3 px-3 py-2.5">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13px] text-[var(--color-ink)]">{p.packageName}</p>
+                    <p className="text-[12px] text-[var(--color-ash)]">
+                      {formatTL(p.amount)} · {p.totalSessions} ders · ödeme {formatDate(p.paidAt)}
+                    </p>
+                  </div>
+                  <button onClick={() => handleDeleteUpcoming(p.id)} className="text-[var(--color-ash)] hover:text-[var(--color-danger)]" aria-label="Sil">
+                    <Trash size={16} />
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
-        ) : (
-          <Button size="lg" onClick={() => handleSubmit(!hadPackage && totalSessionsNum > 0)} disabled={saving}>
-            {saving ? "Kaydediliyor..." : isEdit ? "Kaydet" : "Üyeyi ekle"}
-          </Button>
         )}
+
+        {completed.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <p className="text-[13px] font-medium text-[var(--color-ink-soft)]">Geçmiş paketler</p>
+            <div className="flex flex-col divide-y divide-[var(--color-line)] rounded-[var(--radius-md)] border border-[var(--color-line)]">
+              {completed.map((p) => (
+                <div key={p.id} className="px-3 py-2.5">
+                  <p className="truncate text-[13px] text-[var(--color-ink)]">{p.packageName}</p>
+                  <p className="text-[12px] text-[var(--color-ash)]">
+                    {formatTL(p.amount)} · {p.sessionsUsed ?? 0}/{p.totalSessions} ders kullanıldı · ödeme {formatDate(p.paidAt)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {error && <p className="text-[13px] text-[var(--color-danger)]">{error}</p>}
+
+        <Button size="lg" onClick={handleSubmit} disabled={saving}>
+          {saving ? "Kaydediliyor..." : isEdit ? "Kaydet" : "Üyeyi ekle"}
+        </Button>
       </div>
     </Modal>
   );

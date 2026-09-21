@@ -128,15 +128,23 @@ export function GuideScreen() {
                 animasyonlu bir çubuk görürsün; bu üyeye her ders girdiğinde çubuk otomatik azalır.
               </p>
               <p>
-                Paket bitip yeni bir paket alındığında, aynı üyeyi aç, yeni bilgileri gir ve <strong>"Yeni paket
-                başlat"</strong>'a bas — sayaç sıfırlanır. Sadece bir yazım hatası düzeltiyorsan "Devamı"nı seç, sayaç
-                aynı kalır.
+                Paket kutusundaki adı, ücreti ya da ders sayısını düzeltmek artık sadece bir düzeltmedir — bir yazım
+                hatasını düzeltmek geçmişi ya da ciroyu etkilemez. Üyeye gerçekten <strong>yeni bir paket</strong>
+                (yenileme ya da ilk paket) vermek için <strong>"+ Yeni paket ekle"</strong>'ye bas: adı, ücreti, ders
+                sayısı ve <strong>ödeme tarihini</strong> gir.
               </p>
               <p>
-                Yeni bir paket başlatırken <strong>ödeme tarihini</strong> de girersin (varsayılan bugün). Ders ücreti
-                toplu alındığı için ciroya bu tarih üzerinden, o ayın hesabına yazılır — dersler sonraki aya sarksa bile
-                sonraki ayın cirosuna eklenmez. PT primi buna bağlı değildir: her PT'ye, o ay <strong>fiilen verdiği</strong>
-                dersler üzerinden ödenir.
+                İki seçeneğin var: <strong>"Hemen başlat"</strong> — mevcut paket dersleri bitmemiş olsa bile şimdi
+                değiştirilsin istiyorsan; eski paket anında geçmişe (Geçmiş paketler) kaydedilir, yeni paket sayaç
+                sıfırlanarak hemen başlar. <strong>"Gelecek paket olarak ekle"</strong> — üye mevcut paketi bitmeden
+                önceden ödeme yaptıysa: ciroya hemen (ödeme tarihine göre) yazılır, ama üyenin ders sayacı mevcut paket
+                gerçekten bitene kadar değişmez; paket bitince sıradaki otomatik devreye girer, ekstra bir işlem
+                yapmana gerek kalmaz.
+              </p>
+              <p>
+                Ders ücreti toplu alındığı için ciro, ödeme tarihinin ait olduğu aya yazılır — dersler sonraki aya sarksa
+                bile sonraki ayın cirosuna eklenmez. PT primi buna bağlı değildir: her PT'ye, o ay <strong>fiilen
+                verdiği</strong> dersler üzerinden ödenir.
               </p>
             </Section>
 
