@@ -43,6 +43,22 @@ Deno.serve(async (req) => {
       return json({ error: "Şifre en az 6 karakter olmalı." }, 400);
     }
 
+    // Anonymous, unauthenticated endpoint — rate-limit per source IP so it
+    // can't be scripted into mass account/org creation or used to squat on
+    // emails the caller doesn't own. Counts every real attempt (including
+    // ones that go on to fail for other reasons), not just successes.
+    const ip = req.headers.get("cf-connecting-ip") ?? req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+    const windowStart = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { count: recentAttempts } = await admin
+      .from("org_signup_attempts")
+      .select("*", { count: "exact", head: true })
+      .eq("ip", ip)
+      .gte("created_at", windowStart);
+    if ((recentAttempts ?? 0) >= 5) {
+      return json({ error: "Çok fazla deneme yapıldı. Lütfen bir süre sonra tekrar dene." }, 429);
+    }
+    await admin.from("org_signup_attempts").insert({ ip });
+
     const { data: created, error: createError } = await admin.auth.admin.createUser({
       email: body.email,
       password: body.password,
