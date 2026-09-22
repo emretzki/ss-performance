@@ -1,14 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { signInAtRootAndGetHandoff } from "@/lib/api";
-
-declare global {
-  interface Window {
-    ScrollCraft?: {
-      mount: (root: Element | Document, opts?: Record<string, unknown>) => unknown;
-      instances: unknown[];
-    };
-  }
-}
+import { ensureLandingAssets, removeLandingAssets } from "@/lib/landingAssets";
 
 // Verified scroll-craft build (scrollcraft/builds/gymkoc-landing). Kept as a
 // single markup string so the data-sc-* attributes match the harness-tested
@@ -135,65 +127,6 @@ const LANDING_MARKUP = `
   </div>
 </footer>
 `;
-
-const LANDING_ASSET_ATTR = "data-landing-asset";
-
-function ensureLandingAssets(): Promise<void> {
-  const head = document.head;
-
-  if (!head.querySelector(`link[href="/landing/scrollcraft.css"]`)) {
-    const css = document.createElement("link");
-    css.rel = "stylesheet";
-    css.href = "/landing/scrollcraft.css";
-    css.setAttribute(LANDING_ASSET_ATTR, "");
-    head.appendChild(css);
-  }
-  if (!head.querySelector(`link[href="/landing/page.css"]`)) {
-    const css = document.createElement("link");
-    css.rel = "stylesheet";
-    css.href = "/landing/page.css";
-    css.setAttribute(LANDING_ASSET_ATTR, "");
-    head.appendChild(css);
-  }
-  if (!head.querySelector(`link[href*="fonts.googleapis.com/css2?family=Archivo"]`)) {
-    const preconnect1 = document.createElement("link");
-    preconnect1.rel = "preconnect";
-    preconnect1.href = "https://fonts.googleapis.com";
-    preconnect1.setAttribute(LANDING_ASSET_ATTR, "");
-    const preconnect2 = document.createElement("link");
-    preconnect2.rel = "preconnect";
-    preconnect2.href = "https://fonts.gstatic.com";
-    preconnect2.crossOrigin = "anonymous";
-    preconnect2.setAttribute(LANDING_ASSET_ATTR, "");
-    const fonts = document.createElement("link");
-    fonts.rel = "stylesheet";
-    fonts.href =
-      "https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Space+Grotesk:wght@400;500;600&display=swap";
-    fonts.setAttribute(LANDING_ASSET_ATTR, "");
-    head.append(preconnect1, preconnect2, fonts);
-  }
-
-  if (window.ScrollCraft) return Promise.resolve();
-
-  return new Promise((resolve, reject) => {
-    const existing = document.querySelector<HTMLScriptElement>('script[src="/landing/scrollcraft.js"]');
-    if (existing) {
-      existing.addEventListener("load", () => resolve(), { once: true });
-      existing.addEventListener("error", () => reject(new Error("scrollcraft.js failed to load")), { once: true });
-      return;
-    }
-    const script = document.createElement("script");
-    script.src = "/landing/scrollcraft.js";
-    script.setAttribute(LANDING_ASSET_ATTR, "");
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("scrollcraft.js failed to load"));
-    document.body.appendChild(script);
-  });
-}
-
-function removeLandingAssets() {
-  document.head.querySelectorAll(`[${LANDING_ASSET_ATTR}]`).forEach((el) => el.remove());
-}
 
 type IntroPhase = "hold" | "leaving" | "done";
 

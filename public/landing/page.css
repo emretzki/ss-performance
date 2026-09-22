@@ -482,3 +482,103 @@
 }
 .gk-login-submit:hover { filter: brightness(1.08); }
 .gk-login-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* -------------------------------------------------------------- signup */
+.gk-signup {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sc-gutter);
+  background: var(--sc-canvas);
+}
+.gk-signup-card {
+  width: 100%;
+  max-width: 400px;
+  background: var(--sc-surface);
+  border: 1px solid rgba(147, 160, 188, 0.18);
+  border-radius: 6px;
+  padding: 2rem;
+}
+.gk-signup-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sc-3);
+  margin-bottom: var(--sc-6);
+}
+.gk-signup-mark svg { width: 24px; height: 24px; }
+.gk-signup-mark span {
+  font-family: var(--sc-font-text);
+  font-size: 0.8125rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sc-ink-soft);
+}
+.gk-signup-card h1 {
+  font-family: var(--sc-font-display);
+  font-weight: 800;
+  font-size: 1.6rem;
+  line-height: 1.1;
+  margin: 0 0 0.4rem;
+  color: var(--sc-ink);
+  text-align: center;
+}
+.gk-signup-sub {
+  font-family: var(--sc-font-text);
+  font-size: 0.85rem;
+  color: var(--sc-ink-soft);
+  margin: 0 0 1.6rem;
+  text-align: center;
+}
+.gk-signup-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 5rem;
+  height: 5rem;
+  margin: 0 auto 1.2rem;
+  border-radius: 999px;
+  border: 1px dashed rgba(147, 160, 188, 0.32);
+  background: var(--sc-canvas);
+  color: var(--sc-ink-soft);
+  font-family: var(--sc-font-text);
+  font-size: 0.75rem;
+  overflow: hidden;
+  cursor: pointer;
+  padding: 0;
+}
+.gk-signup-logo img { width: 100%; height: 100%; object-fit: cover; }
+.gk-signup-color-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.gk-signup-color-row input[type="color"] {
+  width: 3.5rem;
+  height: 2.75rem;
+  flex: none;
+  border-radius: 4px;
+  border: 1px solid rgba(147, 160, 188, 0.28);
+  background: var(--sc-canvas);
+  padding: 0.25rem;
+  cursor: pointer;
+}
+.gk-signup-color-row span {
+  font-family: var(--sc-font-text);
+  font-size: 0.85rem;
+  color: var(--sc-ink-soft);
+}
+.gk-signup-foot {
+  display: block;
+  text-align: center;
+  margin-top: 1.2rem;
+  font-family: var(--sc-font-text);
+  font-size: 0.85rem;
+  color: var(--sc-ink-soft);
+  text-decoration: underline;
+  text-decoration-color: rgba(147, 160, 188, 0.35);
+  text-underline-offset: 3px;
+  transition: color 160ms var(--sc-ease-out), text-decoration-color 160ms var(--sc-ease-out);
+}
+.gk-signup-foot:hover { color: var(--sc-accent); text-decoration-color: var(--sc-accent); }

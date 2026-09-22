@@ -1,13 +1,10 @@
-import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { createOrganization, signInAtRootAndGetHandoff } from "@/lib/api";
 import { tenantUrl } from "@/lib/tenant";
-import { Button } from "@/components/ui/Button";
-
-const inputClass =
-  "h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-line-strong)] bg-[var(--color-surface)] px-3 text-[14px] text-[var(--color-ink)] focus:border-[var(--color-gold)]";
+import { ensureLandingAssets, removeLandingAssets } from "@/lib/landingAssets";
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -34,6 +31,15 @@ export function SignupScreen() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Reached from the marketing landing page (both "Ücretsiz salonunu
+  // oluştur" and its own root domain), so it shares that page's dark/lime
+  // visual language rather than the app's own light management-panel theme
+  // — otherwise the pre-login experience would switch brands mid-flow.
+  useEffect(() => {
+    ensureLandingAssets().catch((err) => console.error(err));
+    return () => removeLandingAssets();
+  }, []);
 
   if (profile) return <Navigate to="/calendar" replace />;
 
@@ -82,63 +88,58 @@ export function SignupScreen() {
   }
 
   return (
-    <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-[var(--color-paper)] px-6 py-10">
-      <div className="flex w-full max-w-sm flex-col items-center gap-6">
-        <div className="text-center">
-          <h1 className="font-display text-[26px] font-bold leading-none text-[var(--color-ink)]">Yeni salon oluştur</h1>
-          <p className="mt-1.5 text-[13px] text-[var(--color-ash)]">Kendi markanla, kendi yönetim panelin.</p>
+    <div className="gk-signup">
+      <div className="gk-signup-card">
+        <div className="gk-signup-mark">
+          <svg viewBox="0 0 32 32" fill="none">
+            <path d="M17 3 L8 18 L14.5 18 L13 29 L25 13 L18 13 Z" fill="#B8F028" />
+          </svg>
+          <span>Gymkoç</span>
         </div>
+        <h1>Yeni salon oluştur</h1>
+        <p className="gk-signup-sub">Kendi markanla, kendi yönetim panelin.</p>
 
-        <form onSubmit={handleSubmit} className="flex w-full flex-col gap-3">
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="mx-auto flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface)] text-[12px] text-[var(--color-ash)]"
-          >
-            {logoPreview ? <img src={logoPreview} alt="" className="h-full w-full object-cover" /> : "Logo ekle"}
+        <form onSubmit={handleSubmit}>
+          <button type="button" onClick={() => fileInputRef.current?.click()} className="gk-signup-logo">
+            {logoPreview ? <img src={logoPreview} alt="" /> : "Logo ekle"}
           </button>
           <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
 
-          <div>
-            <label className="mb-1.5 block text-[13px] font-medium text-[var(--color-ink-soft)]">Salon adı</label>
-            <input required value={orgName} onChange={(e) => setOrgName(e.target.value)} className={inputClass} placeholder="Fitness Farm" />
+          <div className="gk-login-field">
+            <label htmlFor="signup-org-name">Salon adı</label>
+            <input id="signup-org-name" required value={orgName} onChange={(e) => setOrgName(e.target.value)} />
           </div>
 
-          <div>
-            <label className="mb-1.5 block text-[13px] font-medium text-[var(--color-ink-soft)]">Marka rengi</label>
-            <div className="flex items-center gap-3">
-              <input
-                type="color"
-                value={accentColor}
-                onChange={(e) => setAccentColor(e.target.value)}
-                className="h-11 w-14 cursor-pointer rounded-[var(--radius-md)] border border-[var(--color-line-strong)] bg-[var(--color-surface)]"
-              />
-              <span className="text-[13px] text-[var(--color-ash)]">{accentColor}</span>
+          <div className="gk-login-field">
+            <label>Marka rengi</label>
+            <div className="gk-signup-color-row">
+              <input type="color" value={accentColor} onChange={(e) => setAccentColor(e.target.value)} />
+              <span>{accentColor}</span>
             </div>
           </div>
 
-          <div>
-            <label className="mb-1.5 block text-[13px] font-medium text-[var(--color-ink-soft)]">Ad Soyad (sen)</label>
-            <input required value={fullName} onChange={(e) => setFullName(e.target.value)} className={inputClass} />
+          <div className="gk-login-field">
+            <label htmlFor="signup-full-name">Ad Soyad (sen)</label>
+            <input id="signup-full-name" required value={fullName} onChange={(e) => setFullName(e.target.value)} />
           </div>
 
-          <div>
-            <label className="mb-1.5 block text-[13px] font-medium text-[var(--color-ink-soft)]">E-posta</label>
-            <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
+          <div className="gk-login-field">
+            <label htmlFor="signup-email">E-posta</label>
+            <input id="signup-email" required type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
           </div>
 
-          <div>
-            <label className="mb-1.5 block text-[13px] font-medium text-[var(--color-ink-soft)]">Şifre</label>
-            <input required type="password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass} />
+          <div className="gk-login-field">
+            <label htmlFor="signup-password">Şifre</label>
+            <input id="signup-password" required type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
           </div>
 
-          {error && <p className="text-[13px] text-[var(--color-danger)]">{error}</p>}
+          {error && <p className="gk-login-error">{error}</p>}
 
-          <Button type="submit" size="lg" disabled={saving} className="mt-2">
+          <button type="submit" className="gk-login-submit" disabled={saving}>
             {saving ? "Oluşturuluyor..." : "Salonu oluştur"}
-          </Button>
+          </button>
 
-          <a href="/" className="text-center text-[13px] font-medium text-[var(--color-ink-soft)]">
+          <a href="/" className="gk-signup-foot">
             Zaten bir salonun var mı? Giriş yap
           </a>
         </form>
