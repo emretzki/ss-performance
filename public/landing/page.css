@@ -82,6 +82,30 @@
   text-transform: uppercase;
   color: var(--sc-ink-soft);
 }
+.gk-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  width: fit-content;
+  margin: 0 0 var(--sc-6);
+  padding: 0.4em 0.9em;
+  border: 1px solid rgba(184, 240, 40, 0.4);
+  border-radius: 999px;
+  font-family: var(--sc-font-text);
+  font-weight: 600;
+  font-size: 0.8125rem;
+  letter-spacing: 0.02em;
+  color: var(--sc-accent);
+  background: rgba(184, 240, 40, 0.08);
+}
+.gk-badge::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--sc-accent);
+  box-shadow: 0 0 0 3px rgba(184, 240, 40, 0.25);
+}
 .gk-hero h1 {
   font-family: var(--sc-font-display);
   font-weight: 800;

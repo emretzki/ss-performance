@@ -26,6 +26,7 @@ const LANDING_MARKUP = `
       <svg class="gk-hero__bolt" viewBox="0 0 32 32" fill="none"><path d="M17 3 L8 18 L14.5 18 L13 29 L25 13 L18 13 Z" fill="#B8F028"/></svg>
       <span>Gymkoç</span>
     </div>
+    <span class="gk-badge">Şu an ücretsiz beta</span>
     <h1>Salonun<br><em>tek panelde</em>.</h1>
     <p class="gk-hero__sub">Antrenörler dersini sahada, telefonlarından saniyeler içinde girer. Sen her şubeyi, her PT'yi tek ekrandan izlersin.</p>
 
@@ -36,7 +37,7 @@ const LANDING_MARKUP = `
     </ol>
 
     <div class="gk-hero__actions">
-      <a class="gk-link gk-link--primary" href="/signup">Salonunu oluştur</a>
+      <a class="gk-link gk-link--primary" href="/signup">Ücretsiz salonunu oluştur</a>
       <a class="gk-link" href="/" data-gk-login>Giriş yap</a>
     </div>
   </section>
