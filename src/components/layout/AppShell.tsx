@@ -1,5 +1,6 @@
 import { Outlet } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { MobileBranchBar } from "./MobileBranchBar";
 import { MobileNav } from "./MobileNav";
 import { Sidebar } from "./Sidebar";
 
@@ -13,6 +14,7 @@ export function AppShell() {
       <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <Outlet />
       </main>
+      <MobileBranchBar />
       <MobileNav role={profile.role} />
     </div>
   );
