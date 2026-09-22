@@ -120,7 +120,8 @@ export function GuideScreen() {
             <Section title="Üyeler ve paketleri">
               <p>
                 Sol menüden <strong>Üyeler</strong>'e gir, "Üye ekle"ye bas. Üyeler ayrı bir giriş yapmaz, sadece ders
-                kaydında isim olarak görünür.
+                kaydında isim olarak görünür. Birden fazla şuben varsa üye formunda bir <strong>Şube</strong> seçici
+                çıkar — bir üyeyi başka bir şubeye taşımak istersen aynı yerden değiştirebilirsin.
               </p>
               <p>
                 Bir üyeye tıklayınca <strong>paket adı, toplam ücret ve toplam ders sayısı</strong> girebilirsin — birim
@@ -153,6 +154,12 @@ export function GuideScreen() {
                 <strong>Genel Bakış</strong>, bugün kaç ders girildiğini, en yoğun saati ve PT bazlı günlük dağılımı tek
                 ekranda gösterir. <strong>Raporlar</strong>'da şube genelini ya da tek bir PT'yi seçip haftalık/aylık ders
                 sayılarını ve idman türü dağılımını inceleyebilirsin.
+              </p>
+              <p>
+                Birden fazla şuben varsa Raporlar'ın üstünde ayrı bir <strong>Şube</strong> filtresi çıkar: tek bir
+                şubeyi seçebilir, ya da <strong>"Tüm şubeler"</strong>e basıp bütün şirketin toplamını (ciro, gider, prim,
+                kâr — hepsi birleşik) görebilirsin. Bu filtre, sol üstteki şube seçiciden bağımsız çalışır. PT'ler
+                sadece kendi şubelerinin raporunu görür, bu filtreyi göremez.
               </p>
               <p>
                 "Tüm şube" seçiliyken <strong>bu ayın cirosunu</strong> (o ay ödenen paketlerin toplamı), <strong>giderleri</strong>

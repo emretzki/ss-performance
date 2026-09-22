@@ -336,6 +336,30 @@ export async function deleteWorkoutType(id: string): Promise<void> {
 // Trainers / people
 // ---------------------------------------------------------------------------
 
+function mapTrainerRow(r: {
+  id: string;
+  branch_id: string;
+  bio: string | null;
+  badge_color: string;
+  commission_rate: number;
+  profiles: { organization_id: string; full_name: string; phone: string | null; avatar_url: string | null; role: string } | { organization_id: string; full_name: string; phone: string | null; avatar_url: string | null; role: string }[] | null;
+}): Trainer {
+  const p = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles;
+  return {
+    id: r.id,
+    organizationId: p?.organization_id ?? "",
+    branchId: r.branch_id,
+    role: (p?.role ?? "trainer") as Role,
+    fullName: p?.full_name ?? "",
+    phone: p?.phone ?? null,
+    avatarColor: r.badge_color,
+    avatarUrl: p?.avatar_url ?? null,
+    badgeColor: r.badge_color,
+    bio: r.bio,
+    commissionRate: r.commission_rate,
+  };
+}
+
 export async function listTrainers(branchId: string): Promise<Trainer[]> {
   if (isSupabaseConfigured && supabase) {
     const { data, error } = await supabase
@@ -343,24 +367,24 @@ export async function listTrainers(branchId: string): Promise<Trainer[]> {
       .select("id, branch_id, bio, badge_color, commission_rate, profiles(organization_id, full_name, phone, avatar_url, role)")
       .eq("branch_id", branchId);
     if (error) throw error;
-    return data.map((r) => {
-      const p = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles;
-      return {
-        id: r.id,
-        organizationId: p?.organization_id ?? "",
-        branchId: r.branch_id,
-        role: (p?.role ?? "trainer") as Role,
-        fullName: p?.full_name ?? "",
-        phone: p?.phone ?? null,
-        avatarColor: r.badge_color,
-        avatarUrl: p?.avatar_url ?? null,
-        badgeColor: r.badge_color,
-        bio: r.bio,
-        commissionRate: r.commission_rate,
-      };
-    });
+    return data.map(mapTrainerRow);
   }
   return mockDB.get().trainers.filter((t) => t.branchId === branchId);
+}
+
+/** Every trainer across every branch in the org — used for the "Tüm
+ * şubeler" (whole-company) report view. Owner/super_admin only; RLS blocks
+ * a trainer's own JWT from reading other branches' trainers regardless. */
+export async function listTrainersForOrg(organizationId: string): Promise<Trainer[]> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from("trainers")
+      .select("id, branch_id, bio, badge_color, commission_rate, profiles!inner(organization_id, full_name, phone, avatar_url, role)")
+      .eq("profiles.organization_id", organizationId);
+    if (error) throw error;
+    return data.map(mapTrainerRow);
+  }
+  return mockDB.get().trainers.filter((t) => t.organizationId === organizationId);
 }
 
 export async function updateTrainerCommissionRate(trainerId: string, commissionRate: number): Promise<void> {
@@ -490,6 +514,9 @@ export interface UpdateMemberInput {
   fullName?: string;
   phone?: string | null;
   notes?: string | null;
+  /** Reassigns which branch this member belongs to — only relevant for a
+   * multi-branch org, and only owner/super_admin can change it (RLS-enforced). */
+  branchId?: string;
   /** Plain corrections to the current package's own fields — a typo fix, not
    * a new purchase. Never touches the payments ledger or the usage counter;
    * use addMemberPackage for an actual new, renewed, or queued package. */
@@ -504,6 +531,7 @@ export async function updateMember(id: string, input: UpdateMemberInput): Promis
     if (input.fullName !== undefined) patch.full_name = input.fullName;
     if (input.phone !== undefined) patch.phone = input.phone;
     if (input.notes !== undefined) patch.notes = input.notes;
+    if (input.branchId !== undefined) patch.branch_id = input.branchId;
     if (input.packageName !== undefined) patch.package_name = input.packageName;
     if (input.packageTotalPrice !== undefined) patch.package_total_price = input.packageTotalPrice;
     if (input.packageTotalSessions !== undefined) patch.package_total_sessions = input.packageTotalSessions;
@@ -514,6 +542,7 @@ export async function updateMember(id: string, input: UpdateMemberInput): Promis
   mockDB.updateMember(id, {
     ...(input.fullName !== undefined && { fullName: input.fullName }),
     ...(input.phone !== undefined && { phone: input.phone }),
+    ...(input.branchId !== undefined && { branchId: input.branchId }),
     ...(input.notes !== undefined && { notes: input.notes }),
     ...(input.packageName !== undefined && { packageName: input.packageName }),
     ...(input.packageTotalPrice !== undefined && { packageTotalPrice: input.packageTotalPrice }),
@@ -1008,18 +1037,13 @@ export interface RevenueSummary {
   byTrainer: { trainerId: string; sessionValue: number; commission: number }[];
 }
 
-/** Revenue/profit for a branch in [from, to). Ciro comes from the payments
- * ledger (cash-basis); commission still comes from sessions + members +
- * trainers (session-basis) exactly as before — the two halves of this report
- * deliberately use different bases, per how the business is actually run. */
-export async function getBranchRevenue(branchId: string, from: Date, to: Date): Promise<RevenueSummary> {
-  const [sessions, members, trainers, payments, expenses] = await Promise.all([
-    listSessions(branchId, from, to),
-    listMembers(branchId),
-    listTrainers(branchId),
-    listPayments(branchId, from, to),
-    listBranchExpenses(branchId),
-  ]);
+function computeRevenue(
+  sessions: GymSession[],
+  members: Member[],
+  trainers: Trainer[],
+  payments: Payment[],
+  expenses: BranchExpense[],
+): RevenueSummary {
   const now = new Date();
   const memberById = new Map(members.map((m) => [m.id, m]));
   const trainerById = new Map(trainers.map((t) => [t.id, t]));
@@ -1055,6 +1079,46 @@ export async function getBranchRevenue(branchId: string, from: Date, to: Date): 
     commissionPayable,
     byTrainer: [...byTrainerMap.entries()].map(([trainerId, v]) => ({ trainerId, ...v })),
   };
+}
+
+/** Revenue/profit for a branch in [from, to). Ciro comes from the payments
+ * ledger (cash-basis); commission still comes from sessions + members +
+ * trainers (session-basis) exactly as before — the two halves of this report
+ * deliberately use different bases, per how the business is actually run. */
+export async function getBranchRevenue(branchId: string, from: Date, to: Date): Promise<RevenueSummary> {
+  const [sessions, members, trainers, payments, expenses] = await Promise.all([
+    listSessions(branchId, from, to),
+    listMembers(branchId),
+    listTrainers(branchId),
+    listPayments(branchId, from, to),
+    listBranchExpenses(branchId),
+  ]);
+  return computeRevenue(sessions, members, trainers, payments, expenses);
+}
+
+/** Same as getBranchRevenue, but combined across every branch in the org —
+ * the "Tüm şubeler" whole-company report view. Trainer ids are globally
+ * unique (a trainer belongs to exactly one branch), so summing byTrainer
+ * across branches never double-counts. */
+export async function getOrgRevenue(branchIds: string[], from: Date, to: Date): Promise<RevenueSummary> {
+  const perBranch = await Promise.all(
+    branchIds.map((branchId) =>
+      Promise.all([
+        listSessions(branchId, from, to),
+        listMembers(branchId),
+        listTrainers(branchId),
+        listPayments(branchId, from, to),
+        listBranchExpenses(branchId),
+      ]),
+    ),
+  );
+  return computeRevenue(
+    perBranch.flatMap((x) => x[0]),
+    perBranch.flatMap((x) => x[1]),
+    perBranch.flatMap((x) => x[2]),
+    perBranch.flatMap((x) => x[3]),
+    perBranch.flatMap((x) => x[4]),
+  );
 }
 
 function startOfWeek(d: Date): Date {

@@ -218,7 +218,15 @@ export const mockDB = {
     patch: Partial<
       Pick<
         Member,
-        "fullName" | "phone" | "notes" | "packageName" | "packageTotalPrice" | "packageTotalSessions" | "packageSessionsUsed" | "packagePaidAt"
+        | "fullName"
+        | "phone"
+        | "notes"
+        | "branchId"
+        | "packageName"
+        | "packageTotalPrice"
+        | "packageTotalSessions"
+        | "packageSessionsUsed"
+        | "packagePaidAt"
       >
     >,
   ) {

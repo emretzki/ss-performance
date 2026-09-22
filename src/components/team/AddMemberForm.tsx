@@ -5,7 +5,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { PackageProgressBar } from "@/components/ui/PackageProgressBar";
 import { addMemberPackage, createMember, deleteUpcomingPackage, listMemberPackageHistory, updateMember } from "@/lib/api";
-import type { Member } from "@/lib/types";
+import type { Branch, Member } from "@/lib/types";
 
 const inputClass =
   "h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-line-strong)] bg-[var(--color-surface)] px-3 text-[14px] text-[var(--color-ink)] focus:border-[var(--color-gold)]";
@@ -19,19 +19,25 @@ function formatTL(n: number): string {
 }
 
 interface AddMemberFormProps {
-  branchId: string;
+  /** Branch a brand-new member is created into; ignored (in favor of the
+   * branch picker below) once the org has more than one branch. */
+  defaultBranchId: string;
+  /** Every branch in the org — the picker only renders when there's a real
+   * choice to make (branches.length > 1). */
+  branches: Branch[];
   /** Present when editing an existing member instead of creating a new one. */
   member?: Member;
   onClose: () => void;
   onCreated: () => void;
 }
 
-export function AddMemberForm({ branchId, member, onClose, onCreated }: AddMemberFormProps) {
+export function AddMemberForm({ defaultBranchId, branches, member, onClose, onCreated }: AddMemberFormProps) {
   const isEdit = Boolean(member);
   const qc = useQueryClient();
   const [fullName, setFullName] = useState(member?.fullName ?? "");
   const [phone, setPhone] = useState(member?.phone ?? "");
   const [notes, setNotes] = useState(member?.notes ?? "");
+  const [branchId, setBranchId] = useState(member?.branchId ?? defaultBranchId);
   const [packageName, setPackageName] = useState(member?.packageName ?? "");
   const [packageTotalPrice, setPackageTotalPrice] = useState(member?.packageTotalPrice?.toString() ?? "");
   const [packageTotalSessions, setPackageTotalSessions] = useState(member?.packageTotalSessions?.toString() ?? "");
@@ -64,7 +70,9 @@ export function AddMemberForm({ branchId, member, onClose, onCreated }: AddMembe
   const completed = history.filter((p) => p.status === "completed");
 
   function invalidateAll() {
-    qc.invalidateQueries({ queryKey: ["members", branchId] });
+    // Broad match (no branchId) on purpose: reassigning a member's branch
+    // means both the old and new branch's member lists need to refresh.
+    qc.invalidateQueries({ queryKey: ["members"] });
     if (member) qc.invalidateQueries({ queryKey: ["member-packages", member.id] });
   }
 
@@ -85,6 +93,7 @@ export function AddMemberForm({ branchId, member, onClose, onCreated }: AddMembe
           fullName: fullName.trim(),
           phone: phone.trim() || null,
           notes: notes.trim() || null,
+          branchId,
           ...(hadPackage && {
             packageName: packageName.trim() || null,
             packageTotalPrice: totalPriceNum || null,
@@ -169,6 +178,18 @@ export function AddMemberForm({ branchId, member, onClose, onCreated }: AddMembe
           <label className="mb-1.5 block text-[13px] font-medium text-[var(--color-ink-soft)]">Telefon (opsiyonel)</label>
           <input value={phone} onChange={(e) => setPhone(e.target.value)} className={inputClass} />
         </div>
+        {branches.length > 1 && (
+          <div>
+            <label className="mb-1.5 block text-[13px] font-medium text-[var(--color-ink-soft)]">Şube</label>
+            <select value={branchId} onChange={(e) => setBranchId(e.target.value)} className={inputClass}>
+              {branches.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <div>
           <label className="mb-1.5 block text-[13px] font-medium text-[var(--color-ink-soft)]">Not (opsiyonel)</label>
           <input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Sakatlık geçmişi, tercihler vb." className={inputClass} />

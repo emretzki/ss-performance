@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBranch } from "@/contexts/BranchContext";
-import { getBranchRevenue, getTrainerStats, listTrainers, listWorkoutTypes } from "@/lib/api";
+import { getBranchRevenue, getOrgRevenue, getTrainerStats, listTrainers, listTrainersForOrg, listWorkoutTypes } from "@/lib/api";
 import clsx from "clsx";
 
 function formatTL(n: number): string {
@@ -100,24 +100,52 @@ function DayBars({ byDay }: { byDay: { date: string; count: number }[] }) {
 
 export function ReportsScreen() {
   const { profile } = useAuth();
-  const { activeBranchId } = useBranch();
+  const { activeBranchId, branches } = useBranch();
   const isTrainer = profile?.role === "trainer";
   const [searchParams] = useSearchParams();
 
+  // A dedicated filter for this screen — independent of the sidebar's
+  // global active-branch switcher, since "which branch(es) am I reporting
+  // on" and "which branch am I currently working in" are different
+  // questions for a multi-branch owner. A trainer never sees this: they're
+  // locked to their own branch everywhere, reports included.
+  const [branchScope, setBranchScope] = useState<string | "all">(() => activeBranchId ?? "all");
+  const branchScopeInitialized = useRef(false);
+  useEffect(() => {
+    if (!branchScopeInitialized.current && activeBranchId) {
+      setBranchScope(activeBranchId);
+      branchScopeInitialized.current = true;
+    }
+  }, [activeBranchId]);
+
+  const showBranchPicker = !isTrainer && branches.length > 1;
+  const scopedBranchId = showBranchPicker ? branchScope : (activeBranchId ?? "all");
+  const isAllBranches = showBranchPicker && scopedBranchId === "all";
+  const orgId = profile?.organizationId;
+
   const { data: trainers = [] } = useQuery({
-    queryKey: ["trainers", activeBranchId],
-    queryFn: () => listTrainers(activeBranchId as string),
-    enabled: Boolean(activeBranchId) && !isTrainer,
+    queryKey: isAllBranches ? ["trainers-org", orgId] : ["trainers", scopedBranchId],
+    queryFn: () => (isAllBranches ? listTrainersForOrg(orgId as string) : listTrainers(scopedBranchId as string)),
+    enabled: !isTrainer && (isAllBranches ? Boolean(orgId) : Boolean(scopedBranchId)),
   });
 
   const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(() => searchParams.get("trainer"));
   const showBranchTotal = !isTrainer && selectedTrainerId === null;
   const trainerId = isTrainer ? profile!.id : selectedTrainerId;
 
+  function handleBranchScopeChange(next: string | "all") {
+    setBranchScope(next);
+    setSelectedTrainerId(null); // a trainer picked under the old scope may not exist in the new one
+  }
+  // getTrainerStats needs the branch a trainer's sessions actually live in —
+  // not the report's own scope, which may be "all" or a different branch
+  // than the one an owner is browsing from.
+  const selectedTrainerBranchId = isTrainer ? activeBranchId : (trainers.find((t) => t.id === trainerId)?.branchId ?? activeBranchId);
+
   const { data: stats } = useQuery({
-    queryKey: ["trainer-stats", activeBranchId, trainerId],
-    queryFn: () => getTrainerStats(activeBranchId as string, trainerId as string),
-    enabled: Boolean(activeBranchId && trainerId),
+    queryKey: ["trainer-stats", selectedTrainerBranchId, trainerId],
+    queryFn: () => getTrainerStats(selectedTrainerBranchId as string, trainerId as string),
+    enabled: Boolean(selectedTrainerBranchId && trainerId),
   });
 
   const { data: workoutTypes = [] } = useQuery({
@@ -130,17 +158,22 @@ export function ReportsScreen() {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
   const { data: revenue } = useQuery({
-    queryKey: ["branch-revenue", activeBranchId, monthStart.toISOString()],
-    queryFn: () => getBranchRevenue(activeBranchId as string, monthStart, monthEnd),
-    enabled: Boolean(activeBranchId),
+    queryKey: isAllBranches
+      ? ["org-revenue", orgId, monthStart.toISOString()]
+      : ["branch-revenue", scopedBranchId, monthStart.toISOString()],
+    queryFn: () =>
+      isAllBranches
+        ? getOrgRevenue(branches.map((b) => b.id), monthStart, monthEnd)
+        : getBranchRevenue(scopedBranchId as string, monthStart, monthEnd),
+    enabled: isAllBranches ? branches.length > 0 : Boolean(scopedBranchId),
   });
   const trainerRevenue = trainerId ? revenue?.byTrainer.find((b) => b.trainerId === trainerId) : undefined;
 
   const allStatsQueries = useQueries({
     queries: trainers.map((t) => ({
-      queryKey: ["trainer-stats", activeBranchId, t.id],
-      queryFn: () => getTrainerStats(activeBranchId as string, t.id),
-      enabled: showBranchTotal && Boolean(activeBranchId),
+      queryKey: ["trainer-stats", t.branchId, t.id],
+      queryFn: () => getTrainerStats(t.branchId, t.id),
+      enabled: showBranchTotal,
     })),
   });
 
@@ -186,6 +219,39 @@ export function ReportsScreen() {
           </p>
         </div>
 
+        {showBranchPicker && (
+          <div className="flex flex-col gap-1.5">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--color-ash)]">Şube</p>
+            <div className="flex gap-2 overflow-x-auto">
+              <button
+                onClick={() => handleBranchScopeChange("all")}
+                className={clsx(
+                  "shrink-0 rounded-full border px-3 py-1.5 text-[13px] font-medium transition-colors duration-100",
+                  isAllBranches
+                    ? "border-[var(--color-ink)] bg-[var(--color-ink)] text-[var(--color-paper)]"
+                    : "border-[var(--color-line-strong)] text-[var(--color-ink-soft)]",
+                )}
+              >
+                Tüm şubeler
+              </button>
+              {branches.map((b) => (
+                <button
+                  key={b.id}
+                  onClick={() => handleBranchScopeChange(b.id)}
+                  className={clsx(
+                    "shrink-0 rounded-full border px-3 py-1.5 text-[13px] font-medium transition-colors duration-100",
+                    branchScope === b.id
+                      ? "border-[var(--color-ink)] bg-[var(--color-ink)] text-[var(--color-paper)]"
+                      : "border-[var(--color-line-strong)] text-[var(--color-ink-soft)]",
+                  )}
+                >
+                  {b.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {!isTrainer && (
           <div className="flex gap-2 overflow-x-auto">
             <button
@@ -197,7 +263,7 @@ export function ReportsScreen() {
                   : "border-[var(--color-line-strong)] text-[var(--color-ink-soft)]",
               )}
             >
-              Tüm şube
+              {isAllBranches ? "Tüm şirket" : "Tüm şube"}
             </button>
             {trainers.map((t) => (
               <button

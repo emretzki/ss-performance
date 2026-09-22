@@ -41,7 +41,7 @@ const FILTERS: { key: Filter; label: string }[] = [
 
 export function MembersScreen() {
   const { profile } = useAuth();
-  const { activeBranchId } = useBranch();
+  const { activeBranchId, branches } = useBranch();
   const qc = useQueryClient();
   const canManage = profile?.role === "super_admin" || profile?.role === "owner";
   const [openAdd, setOpenAdd] = useState(false);
@@ -138,18 +138,20 @@ export function MembersScreen() {
 
       {openAdd && activeBranchId && (
         <AddMemberForm
-          branchId={activeBranchId}
+          defaultBranchId={activeBranchId}
+          branches={branches}
           onClose={() => setOpenAdd(false)}
-          onCreated={() => qc.invalidateQueries({ queryKey: ["members", activeBranchId] })}
+          onCreated={() => qc.invalidateQueries({ queryKey: ["members"] })}
         />
       )}
 
       {editingMember && activeBranchId && (
         <AddMemberForm
-          branchId={activeBranchId}
+          defaultBranchId={activeBranchId}
+          branches={branches}
           member={members.find((m) => m.id === editingMember.id) ?? editingMember}
           onClose={() => setEditingMember(null)}
-          onCreated={() => qc.invalidateQueries({ queryKey: ["members", activeBranchId] })}
+          onCreated={() => qc.invalidateQueries({ queryKey: ["members"] })}
         />
       )}
     </div>
