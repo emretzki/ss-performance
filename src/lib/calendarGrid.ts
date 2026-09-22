@@ -14,8 +14,8 @@ export const ZOOM_LABELS: Record<ZoomLevel, string> = {
   detailed: "Detaylı",
 };
 
-export const DAY_START_HOUR = 7;
-export const DAY_END_HOUR = 22;
+export const DAY_START_HOUR = 6;
+export const DAY_END_HOUR = 24;
 export const SLOT_MIN = 30;
 
 export function slotTimes(): { hour: number; minute: number }[] {
