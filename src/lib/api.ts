@@ -1062,7 +1062,7 @@ export interface RevenueSummary {
    * unitPrice * commissionRate. A branch owner's own sessions are exempt
    * (0% — no commission is paid out on them at all). */
   commissionPayable: number;
-  byTrainer: { trainerId: string; sessionValue: number; commission: number }[];
+  byTrainer: { trainerId: string; sessionCount: number; sessionValue: number; commission: number }[];
 }
 
 function computeRevenue(
@@ -1080,7 +1080,7 @@ function computeRevenue(
   const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
 
   let commissionPayable = 0;
-  const byTrainerMap = new Map<string, { sessionValue: number; commission: number }>();
+  const byTrainerMap = new Map<string, { sessionCount: number; sessionValue: number; commission: number }>();
 
   for (const s of sessions) {
     if (s.status === "cancelled" || new Date(s.startsAt) > now) continue;
@@ -1094,7 +1094,8 @@ function computeRevenue(
     const rate = trainer?.commissionRate ?? 50;
     const commission = unitPrice * (rate / 100);
     commissionPayable += commission;
-    const entry = byTrainerMap.get(s.trainerId) ?? { sessionValue: 0, commission: 0 };
+    const entry = byTrainerMap.get(s.trainerId) ?? { sessionCount: 0, sessionValue: 0, commission: 0 };
+    entry.sessionCount += 1;
     entry.sessionValue += unitPrice;
     entry.commission += commission;
     byTrainerMap.set(s.trainerId, entry);

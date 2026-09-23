@@ -409,14 +409,20 @@ export function ReportsScreen() {
                         .sort((a, b) => b.commission - a.commission)
                         .map((row) => {
                           const trainer = trainers.find((t) => t.id === row.trainerId);
+                          const unitPrice = row.sessionCount > 0 ? row.sessionValue / row.sessionCount : 0;
                           return (
                             <button
                               key={row.trainerId}
                               onClick={() => setSelectedTrainerId(row.trainerId)}
                               className="-mx-2 flex items-center justify-between gap-3 rounded-[var(--radius-md)] px-2 py-2.5 text-left transition-colors duration-100 hover:bg-white/5"
                             >
-                              <span className="truncate text-[13px] font-medium text-[var(--color-ledger-ink)]">
-                                {trainer?.fullName ?? "Bilinmeyen PT"}
+                              <span className="min-w-0 flex-1">
+                                <span className="block truncate text-[13px] font-medium text-[var(--color-ledger-ink)]">
+                                  {trainer?.fullName ?? "Bilinmeyen PT"}
+                                </span>
+                                <span className="block text-[12px] tabular-nums text-[var(--color-ledger-ink-soft)]">
+                                  {row.sessionCount} ders · ort. {formatTL(unitPrice)}/ders
+                                </span>
                               </span>
                               <span className="shrink-0 font-display text-[15px] font-semibold tabular-nums text-[var(--color-gold-soft)]">
                                 {formatTL(row.commission)}
@@ -446,13 +452,27 @@ export function ReportsScreen() {
                 </p>
                 <p className="text-[13px] text-[var(--color-ink-soft)]">{isTrainer ? "Kazandığın prim" : "Ödenecek prim"}</p>
 
-                <div className="mt-4 flex items-center justify-between border-t pt-3" style={{ borderColor: "var(--color-gold-soft)" }}>
-                  <p className="text-[12px] text-[var(--color-ink-soft)]">
-                    {isTrainer ? "Verdiğin derslerin değeri" : "Verdiği derslerin değeri"}
-                  </p>
-                  <p className="font-display text-[16px] font-semibold tabular-nums text-[var(--color-ink)]">
-                    {formatTL(trainerRevenue.sessionValue)}
-                  </p>
+                <div className="mt-4 flex flex-col gap-2 border-t pt-3" style={{ borderColor: "var(--color-gold-soft)" }}>
+                  <div className="flex items-center justify-between">
+                    <p className="text-[12px] text-[var(--color-ink-soft)]">{isTrainer ? "Verdiğin ders" : "Verdiği ders"}</p>
+                    <p className="font-display text-[16px] font-semibold tabular-nums text-[var(--color-ink)]">
+                      {trainerRevenue.sessionCount}
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <p className="text-[12px] text-[var(--color-ink-soft)]">Ortalama ders ücreti</p>
+                    <p className="font-display text-[16px] font-semibold tabular-nums text-[var(--color-ink)]">
+                      {formatTL(trainerRevenue.sessionCount > 0 ? trainerRevenue.sessionValue / trainerRevenue.sessionCount : 0)}
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <p className="text-[12px] text-[var(--color-ink-soft)]">
+                      {isTrainer ? "Verdiğin derslerin değeri" : "Verdiği derslerin değeri"}
+                    </p>
+                    <p className="font-display text-[16px] font-semibold tabular-nums text-[var(--color-ink)]">
+                      {formatTL(trainerRevenue.sessionValue)}
+                    </p>
+                  </div>
                 </div>
               </section>
             )}
