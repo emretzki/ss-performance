@@ -3,7 +3,8 @@ import { useQueries, useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBranch } from "@/contexts/BranchContext";
-import { getBranchRevenue, getOrgRevenue, getTrainerStats, listTrainers, listTrainersForOrg, listWorkoutTypes } from "@/lib/api";
+import { useOrganization } from "@/contexts/OrganizationContext";
+import { getBranchRevenue, getCommissionPeriod, getOrgRevenue, getTrainerStats, listTrainers, listTrainersForOrg, listWorkoutTypes } from "@/lib/api";
 import clsx from "clsx";
 
 function formatTL(n: number): string {
@@ -98,9 +99,16 @@ function DayBars({ byDay }: { byDay: { date: string; count: number }[] }) {
   );
 }
 
+function formatPeriodLabel(start: Date, end: Date): string {
+  const lastDay = new Date(end.getTime() - 86400000);
+  const fmt = (d: Date) => d.toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
+  return `${fmt(start)} – ${fmt(lastDay)}`;
+}
+
 export function ReportsScreen() {
   const { profile } = useAuth();
   const { activeBranchId, branches } = useBranch();
+  const { organization } = useOrganization();
   const isTrainer = profile?.role === "trainer";
   const [searchParams] = useSearchParams();
 
@@ -155,16 +163,18 @@ export function ReportsScreen() {
   });
 
   const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  // Commission is paid out on the org's own payout cycle, not the calendar
+  // month — an owner who pays PTs on the 15th needs "bu ay" to mean the
+  // 15th-to-15th, not the 1st-to-1st, or the figures never match payday.
+  const { start: periodStart, end: periodEnd } = getCommissionPeriod(organization?.commissionPeriodStartDay ?? 1, now);
   const { data: revenue } = useQuery({
     queryKey: isAllBranches
-      ? ["org-revenue", orgId, monthStart.toISOString()]
-      : ["branch-revenue", scopedBranchId, monthStart.toISOString()],
+      ? ["org-revenue", orgId, periodStart.toISOString()]
+      : ["branch-revenue", scopedBranchId, periodStart.toISOString()],
     queryFn: () =>
       isAllBranches
-        ? getOrgRevenue(branches.map((b) => b.id), monthStart, monthEnd)
-        : getBranchRevenue(scopedBranchId as string, monthStart, monthEnd),
+        ? getOrgRevenue(branches.map((b) => b.id), periodStart, periodEnd)
+        : getBranchRevenue(scopedBranchId as string, periodStart, periodEnd),
     enabled: isAllBranches ? branches.length > 0 : Boolean(scopedBranchId),
   });
   const trainerRevenue = trainerId ? revenue?.byTrainer.find((b) => b.trainerId === trainerId) : undefined;
@@ -348,9 +358,12 @@ export function ReportsScreen() {
             {showBranchTotal && revenue && (
               <section className="relative overflow-hidden rounded-[var(--radius-lg)] bg-[var(--color-ledger)] p-5">
                 <div className="absolute inset-x-0 top-0 h-[3px] bg-[var(--color-gold)]" />
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-gold-soft)]">Şube geneli · bu ay</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-gold-soft)]">
+                  Şube geneli · {formatPeriodLabel(periodStart, periodEnd)}
+                </p>
                 <p className="mt-2 max-w-[34ch] text-[12px] text-[var(--color-ledger-ink-soft)]">
-                  Ciro, paketin ödendiği aya yazılır — dersler sonraki aya sarksa bile.
+                  Ciro, paketin ödendiği döneme yazılır — dersler sonraki döneme sarksa bile. Dönem, Ayarlar'daki prim ödeme
+                  gününe göre hesaplanır.
                 </p>
 
                 <p
@@ -426,7 +439,7 @@ export function ReportsScreen() {
             {!showBranchTotal && trainerRevenue && (
               <section className="rounded-[var(--radius-lg)] border border-[var(--color-gold)] bg-[var(--color-gold-tint)] p-5">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-gold-deep)]">
-                  {isTrainer ? "Senin bu ayın" : "PT · bu ay"}
+                  {isTrainer ? "Senin döneminin" : "PT · dönem"} · {formatPeriodLabel(periodStart, periodEnd)}
                 </p>
                 <p className="mt-3 font-display text-[38px] font-bold leading-none tabular-nums text-[var(--color-ink)]">
                   {formatTL(trainerRevenue.commission)}

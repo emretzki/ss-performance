@@ -32,6 +32,7 @@ export function SettingsScreen() {
 
   const [orgName, setOrgName] = useState(organization?.name ?? "");
   const [accentColor, setAccentColor] = useState(organization?.accentColor ?? "#96792C");
+  const [periodStartDay, setPeriodStartDay] = useState(organization?.commissionPeriodStartDay ?? 1);
   const [savingOrg, setSavingOrg] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
 
@@ -51,6 +52,7 @@ export function SettingsScreen() {
     if (organization) {
       setOrgName(organization.name);
       setAccentColor(organization.accentColor);
+      setPeriodStartDay(organization.commissionPeriodStartDay);
     }
   }, [organization]);
 
@@ -79,7 +81,12 @@ export function SettingsScreen() {
   async function handleSaveOrg() {
     setSavingOrg(true);
     try {
-      await updateOrganization(organization!.id, { name: orgName || organization!.name, accentColor, logoUrl: organization!.logoUrl });
+      await updateOrganization(organization!.id, {
+        name: orgName || organization!.name,
+        accentColor,
+        logoUrl: organization!.logoUrl,
+        commissionPeriodStartDay: periodStartDay,
+      });
       refreshOrganization();
     } finally {
       setSavingOrg(false);
@@ -183,6 +190,30 @@ export function SettingsScreen() {
             {savingOrg ? "Kaydediliyor..." : "Markayı kaydet"}
           </Button>
         </section>
+
+        {isOwner && (
+          <section className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] p-4">
+            <p className="text-[13px] font-medium text-[var(--color-ink-soft)]">Prim ödeme dönemi</p>
+            <p className="text-[12px] text-[var(--color-ash)]">
+              Raporlar'daki PT primi hesabı hangi tarih aralığını kapsasın? Takvim ayı yerine kendi ödeme gününü seçebilirsin —
+              örneğin 15 seçersen dönem her ayın 15'inden bir sonraki ayın 14'üne kadar hesaplanır.
+            </p>
+            <div>
+              <label className="mb-1.5 block text-[13px] font-medium text-[var(--color-ink-soft)]">Dönem başlangıç günü</label>
+              <input
+                type="number"
+                min={1}
+                max={28}
+                value={periodStartDay}
+                onChange={(e) => setPeriodStartDay(Math.min(28, Math.max(1, Number(e.target.value) || 1)))}
+                className={`${inputClass} max-w-[100px]`}
+              />
+            </div>
+            <Button onClick={handleSaveOrg} disabled={savingOrg} className="self-start">
+              {savingOrg ? "Kaydediliyor..." : "Dönemi kaydet"}
+            </Button>
+          </section>
+        )}
 
         {activeBranch && (
           <section className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] p-4">

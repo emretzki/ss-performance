@@ -8,6 +8,9 @@ export interface Organization {
   accentColor: string;
   ownerAuthId: string;
   createdAt: string;
+  /** Day of month the PT commission/payout period starts on (1-28) — a
+   * calendar-month "bu ay" rarely matches an owner's actual payday. */
+  commissionPeriodStartDay: number;
 }
 
 /** What a pre-login visitor is allowed to know about a tenant: branding

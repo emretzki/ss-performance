@@ -24,8 +24,8 @@ function todayIso(hour: number, minute: number, dayOffset = 0): string {
 
 function seed(): MockDB {
   const organizations: Organization[] = [
-    { id: "org1", name: "Gymkoç Demo", slug: "gymkocdemo", logoUrl: null, accentColor: "#96792C", ownerAuthId: "owner1", createdAt: new Date().toISOString() },
-    { id: "org2", name: "Fitness Farm", slug: "fitnessfarm", logoUrl: null, accentColor: "#C99A2E", ownerAuthId: "owner2", createdAt: new Date().toISOString() },
+    { id: "org1", name: "Gymkoç Demo", slug: "gymkocdemo", logoUrl: null, accentColor: "#96792C", ownerAuthId: "owner1", createdAt: new Date().toISOString(), commissionPeriodStartDay: 1 },
+    { id: "org2", name: "Fitness Farm", slug: "fitnessfarm", logoUrl: null, accentColor: "#C99A2E", ownerAuthId: "owner2", createdAt: new Date().toISOString(), commissionPeriodStartDay: 15 },
   ];
 
   const branches: Branch[] = [
@@ -205,7 +205,7 @@ export const mockDB = {
     db = { ...db, branches: db.branches.map((b) => (b.id === id ? { ...b, ...patch } : b)) };
     persist();
   },
-  updateOrganization(id: string, patch: Partial<Pick<Organization, "name" | "logoUrl" | "accentColor">>) {
+  updateOrganization(id: string, patch: Partial<Pick<Organization, "name" | "logoUrl" | "accentColor" | "commissionPeriodStartDay">>) {
     db = { ...db, organizations: db.organizations.map((o) => (o.id === id ? { ...o, ...patch } : o)) };
     persist();
   },

@@ -70,7 +70,22 @@ function mapOrganization(r: Record<string, unknown>): Organization {
     accentColor: r.accent_color as string,
     ownerAuthId: r.owner_auth_id as string,
     createdAt: r.created_at as string,
+    commissionPeriodStartDay: r.commission_period_start_day as number,
   };
+}
+
+/** A commission/payout period doesn't have to line up with the calendar
+ * month — many salons pay out on the 15th or 20th. Given the configured
+ * start day, returns the [start, end) window that "today" currently falls
+ * inside, wrapping across month boundaries either direction. */
+export function getCommissionPeriod(startDay: number, reference: Date = new Date()): { start: Date; end: Date } {
+  const day = Math.min(Math.max(Math.round(startDay) || 1, 1), 28);
+  const y = reference.getFullYear();
+  const m = reference.getMonth();
+  if (reference.getDate() >= day) {
+    return { start: new Date(y, m, day), end: new Date(y, m + 1, day) };
+  }
+  return { start: new Date(y, m - 1, day), end: new Date(y, m, day) };
 }
 
 export async function getMyOrganization(organizationId: string): Promise<Organization> {
@@ -158,17 +173,21 @@ export async function signInAtRootAndGetHandoff(email: string, password: string)
 
 export async function updateOrganization(
   id: string,
-  input: { name: string; accentColor: string; logoUrl: string | null },
+  input: { name: string; accentColor: string; logoUrl: string | null; commissionPeriodStartDay?: number },
 ): Promise<void> {
   if (isSupabaseConfigured && supabase) {
-    const { error } = await supabase
-      .from("organizations")
-      .update({ name: input.name, accent_color: input.accentColor, logo_url: input.logoUrl })
-      .eq("id", id);
+    const patch: Record<string, unknown> = { name: input.name, accent_color: input.accentColor, logo_url: input.logoUrl };
+    if (input.commissionPeriodStartDay !== undefined) patch.commission_period_start_day = input.commissionPeriodStartDay;
+    const { error } = await supabase.from("organizations").update(patch).eq("id", id);
     if (error) throw error;
     return;
   }
-  mockDB.updateOrganization(id, { name: input.name, accentColor: input.accentColor, logoUrl: input.logoUrl });
+  mockDB.updateOrganization(id, {
+    name: input.name,
+    accentColor: input.accentColor,
+    logoUrl: input.logoUrl,
+    ...(input.commissionPeriodStartDay !== undefined ? { commissionPeriodStartDay: input.commissionPeriodStartDay } : {}),
+  });
 }
 
 export async function uploadOrgLogo(ownerAuthId: string, file: File): Promise<string> {
@@ -223,7 +242,16 @@ export async function createOrganization(input: CreateOrganizationInput): Promis
     n += 1;
   }
   mockDB.addOrganizationBundle(
-    { id: orgId, name: input.orgName, slug, logoUrl, accentColor: input.accentColor, ownerAuthId: userId, createdAt: new Date().toISOString() },
+    {
+      id: orgId,
+      name: input.orgName,
+      slug,
+      logoUrl,
+      accentColor: input.accentColor,
+      ownerAuthId: userId,
+      createdAt: new Date().toISOString(),
+      commissionPeriodStartDay: 1,
+    },
     { id: branchId, organizationId: orgId, name: input.orgName, address: input.branchAddress, maxConcurrentSessions: DEFAULT_MAX_SESSIONS_PER_SLOT, createdAt: new Date().toISOString() },
     { id: userId, organizationId: orgId, branchId: null, role: "owner", fullName: input.fullName, phone: null, avatarColor: "var(--color-gold)" },
     { id: workoutTypeId, organizationId: orgId, name: "Bire bir PT", color: input.accentColor, createdAt: new Date().toISOString() },
