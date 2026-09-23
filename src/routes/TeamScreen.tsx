@@ -2,10 +2,10 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import clsx from "clsx";
-import { GearSix, Plus } from "@phosphor-icons/react";
+import { GearSix, PencilSimple, Plus } from "@phosphor-icons/react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBranch } from "@/contexts/BranchContext";
-import { listBranches, listTrainers } from "@/lib/api";
+import { listBranches, listMembers, listTrainers } from "@/lib/api";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { AddBranchForm } from "@/components/team/AddBranchForm";
 import { AddPersonForm } from "@/components/team/AddPersonForm";
@@ -34,6 +34,13 @@ export function TeamScreen() {
     queryFn: () => listBranches(profile?.organizationId),
     enabled: canManage && tab === "branches",
   });
+
+  const { data: members = [] } = useQuery({
+    queryKey: ["members", activeBranchId],
+    queryFn: () => listMembers(activeBranchId as string),
+    enabled: Boolean(activeBranchId) && tab === "trainers",
+  });
+  const studentCount = (trainerId: string) => members.filter((m) => m.assignedTrainerId === trainerId).length;
 
   return (
     <div className="flex-1 overflow-y-auto p-4 lg:p-6">
@@ -94,23 +101,43 @@ export function TeamScreen() {
             <EmptyState message="Bu şubede henüz PT kaydı yok." />
           ) : (
             <div className="flex flex-col divide-y divide-[var(--color-line)] rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)]">
-              {trainers.map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => canManage && setEditingTrainer(t)}
-                  disabled={!canManage}
-                  className="flex w-full items-center gap-3 px-4 py-3 text-left disabled:cursor-default"
-                >
-                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: t.badgeColor }} />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[14px] font-medium text-[var(--color-ink)]">{t.fullName}</p>
-                    <p className="truncate text-[12px] text-[var(--color-ash)]">{t.phone ?? "Telefon eklenmedi"}</p>
+              {trainers.map((t) => {
+                const row = (
+                  <>
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: t.badgeColor }} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[14px] font-medium text-[var(--color-ink)]">{t.fullName}</p>
+                      <p className="truncate text-[12px] text-[var(--color-ash)]">
+                        {studentCount(t.id)} öğrenci · {t.phone ?? "Telefon eklenmedi"}
+                      </p>
+                    </div>
+                    {t.role === "trainer" && (
+                      <span className="shrink-0 text-[12px] font-medium text-[var(--color-ink-soft)]">%{t.commissionRate} prim</span>
+                    )}
+                  </>
+                );
+                if (!canManage) {
+                  return (
+                    <div key={t.id} className="flex w-full items-center gap-3 px-4 py-3">
+                      {row}
+                    </div>
+                  );
+                }
+                return (
+                  <div key={t.id} className="flex w-full items-center gap-1 px-4 py-3">
+                    <Link to={`/team/${t.id}`} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                      {row}
+                    </Link>
+                    <button
+                      onClick={() => setEditingTrainer(t)}
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[var(--color-ash)] hover:bg-[var(--color-surface-2)]"
+                      aria-label="Düzenle"
+                    >
+                      <PencilSimple size={15} />
+                    </button>
                   </div>
-                  {t.role === "trainer" && (
-                    <span className="shrink-0 text-[12px] font-medium text-[var(--color-ink-soft)]">%{t.commissionRate} prim</span>
-                  )}
-                </button>
-              ))}
+                );
+              })}
             </div>
           ))}
 

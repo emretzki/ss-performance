@@ -4,9 +4,9 @@ import { X } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/Button";
 import { useIsDesktop } from "@/hooks/useMediaQuery";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
-import { cancelSession, displayStatus, endSession, startSession, updateSessionNote } from "@/lib/api";
+import { cancelSession, displayStatus, endSession, reassignSessionTrainer, startSession, updateSessionNote } from "@/lib/api";
 import { formatHourLabel } from "@/lib/calendarGrid";
-import type { GymSession, WorkoutType } from "@/lib/types";
+import type { GymSession, Trainer, WorkoutType } from "@/lib/types";
 
 interface ManageSessionSheetProps {
   day: Date;
@@ -14,6 +14,9 @@ interface ManageSessionSheetProps {
   minute: number;
   session: GymSession;
   workoutTypes: WorkoutType[];
+  /** Branch colleagues this session can be handed off to — excludes the
+   * current trainer themselves, since "devret" only makes sense to someone else. */
+  colleagues: Trainer[];
   onClose: () => void;
   onChanged: () => void;
 }
@@ -25,12 +28,14 @@ const STATUS_LABEL: Record<string, string> = {
   cancelled: "İptal edildi",
 };
 
-export function ManageSessionSheet({ day, hour, minute, session, workoutTypes, onClose, onChanged }: ManageSessionSheetProps) {
+export function ManageSessionSheet({ day, hour, minute, session, workoutTypes, colleagues, onClose, onChanged }: ManageSessionSheetProps) {
   const isDesktop = useIsDesktop();
   useEscapeClose(onClose);
   const [notes, setNotes] = useState(session.notes ?? "");
   const [saving, setSaving] = useState(false);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
+  const [handoffTo, setHandoffTo] = useState("");
+  const [handingOff, setHandingOff] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const status = displayStatus(session);
@@ -88,6 +93,21 @@ export function ManageSessionSheet({ day, hour, minute, session, workoutTypes, o
       setError("Ders bitirilemedi, tekrar dene.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleHandoff() {
+    if (!handoffTo) return;
+    setHandingOff(true);
+    setError(null);
+    try {
+      await reassignSessionTrainer(session.id, handoffTo);
+      onChanged();
+      onClose();
+    } catch {
+      setError("Ders devredilemedi, tekrar dene.");
+    } finally {
+      setHandingOff(false);
     }
   }
 
@@ -162,6 +182,34 @@ export function ManageSessionSheet({ day, hour, minute, session, workoutTypes, o
                 className="w-full resize-none rounded-[var(--radius-md)] border border-[var(--color-line-strong)] bg-[var(--color-surface)] px-3 py-2.5 text-[14px] text-[var(--color-ink)] placeholder:text-[var(--color-ash)] focus:border-[var(--color-gold)]"
               />
             </div>
+
+            {status !== "done" && colleagues.length > 0 && (
+              <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] p-3">
+                <p className="mb-1.5 text-[13px] font-medium text-[var(--color-ink-soft)]">Dersi devret</p>
+                <p className="mb-2.5 text-[12px] text-[var(--color-ash)]">
+                  Bu dersi bir meslektaşına devredersen, prim de o kişiye yazılır.
+                </p>
+                <div className="flex gap-2">
+                  <select
+                    value={handoffTo}
+                    onChange={(e) => setHandoffTo(e.target.value)}
+                    className="h-11 min-w-0 flex-1 rounded-[var(--radius-md)] border border-[var(--color-line-strong)] bg-[var(--color-surface)] px-3 text-[14px] text-[var(--color-ink)] focus:border-[var(--color-gold)]"
+                  >
+                    <option value="" disabled>
+                      PT seç
+                    </option>
+                    {colleagues.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.fullName}
+                      </option>
+                    ))}
+                  </select>
+                  <Button variant="secondary" onClick={handleHandoff} disabled={!handoffTo || handingOff} className="shrink-0">
+                    {handingOff ? "Devrediliyor..." : "Devret"}
+                  </Button>
+                </div>
+              </div>
+            )}
 
             {error && <p className="text-[13px] text-[var(--color-danger)]">{error}</p>}
 

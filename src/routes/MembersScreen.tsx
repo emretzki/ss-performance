@@ -4,7 +4,7 @@ import { Plus } from "@phosphor-icons/react";
 import clsx from "clsx";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBranch } from "@/contexts/BranchContext";
-import { listMembers } from "@/lib/api";
+import { listMembers, listTrainers } from "@/lib/api";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PackageProgressBar } from "@/components/ui/PackageProgressBar";
 import { AddMemberForm } from "@/components/team/AddMemberForm";
@@ -51,6 +51,12 @@ export function MembersScreen() {
   const { data: members = [] } = useQuery({
     queryKey: ["members", activeBranchId],
     queryFn: () => listMembers(activeBranchId as string),
+    enabled: Boolean(activeBranchId),
+  });
+
+  const { data: trainers = [] } = useQuery({
+    queryKey: ["trainers", activeBranchId],
+    queryFn: () => listTrainers(activeBranchId as string),
     enabled: Boolean(activeBranchId),
   });
 
@@ -119,7 +125,11 @@ export function MembersScreen() {
                     <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[var(--color-ash)]" />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[14px] font-medium text-[var(--color-ink)]">{m.fullName}</p>
-                      <p className="truncate text-[12px] text-[var(--color-ash)]">{m.packageName ?? m.phone ?? "Telefon eklenmedi"}</p>
+                      <p className="truncate text-[12px] text-[var(--color-ash)]">
+                        {trainers.find((t) => t.id === m.assignedTrainerId)?.fullName ?? "PT atanmadı"}
+                        {" · "}
+                        {m.packageName ?? m.phone ?? "Telefon eklenmedi"}
+                      </p>
                     </div>
                     <PackageStatusBadge status={status} />
                     {m.packageTotalSessions && (

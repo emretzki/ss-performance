@@ -59,9 +59,9 @@ function seed(): MockDB {
 
   const todayDate = new Date().toISOString().slice(0, 10);
   const members: Member[] = [
-    { id: "m1", branchId: "b1", fullName: "Kerem Uslu", phone: "0533 111 22 33", notes: null, createdAt: new Date().toISOString(), packageName: "8 Ders Paketi", packageTotalPrice: 6400, packageTotalSessions: 8, packageSessionsUsed: 2, packagePaidAt: todayDate },
-    { id: "m2", branchId: "b1", fullName: "Naz Yavuz", phone: "0533 222 33 44", notes: "Diz sakatlığı geçmişi var", createdAt: new Date().toISOString(), packageName: "12 Ders Paketi", packageTotalPrice: 9000, packageTotalSessions: 12, packageSessionsUsed: 1, packagePaidAt: todayDate },
-    { id: "m3", branchId: "b1", fullName: "Barış Ete", phone: "0533 333 44 55", notes: null, createdAt: new Date().toISOString(), packageName: null, packageTotalPrice: null, packageTotalSessions: null, packageSessionsUsed: 0, packagePaidAt: null },
+    { id: "m1", branchId: "b1", fullName: "Kerem Uslu", phone: "0533 111 22 33", notes: null, createdAt: new Date().toISOString(), assignedTrainerId: "t1", packageName: "8 Ders Paketi", packageTotalPrice: 6400, packageTotalSessions: 8, packageSessionsUsed: 2, packagePaidAt: todayDate },
+    { id: "m2", branchId: "b1", fullName: "Naz Yavuz", phone: "0533 222 33 44", notes: "Diz sakatlığı geçmişi var", createdAt: new Date().toISOString(), assignedTrainerId: "t2", packageName: "12 Ders Paketi", packageTotalPrice: 9000, packageTotalSessions: 12, packageSessionsUsed: 1, packagePaidAt: todayDate },
+    { id: "m3", branchId: "b1", fullName: "Barış Ete", phone: "0533 333 44 55", notes: null, createdAt: new Date().toISOString(), assignedTrainerId: "t1", packageName: null, packageTotalPrice: null, packageTotalSessions: null, packageSessionsUsed: 0, packagePaidAt: null },
   ];
 
   const payments: Payment[] = [
@@ -176,7 +176,7 @@ export const mockDB = {
     if (session.memberId && session.status !== "cancelled") bumpMemberUsage(session.memberId, 1);
     persist();
   },
-  updateSession(id: string, patch: Partial<Pick<GymSession, "notes" | "status" | "startedAt" | "endedAt">>) {
+  updateSession(id: string, patch: Partial<Pick<GymSession, "notes" | "status" | "startedAt" | "endedAt" | "trainerId">>) {
     const before = db.sessions.find((s) => s.id === id);
     db = { ...db, sessions: db.sessions.map((s) => (s.id === id ? { ...s, ...patch } : s)) };
     if (before && patch.status && patch.status !== before.status && before.memberId) {
@@ -222,6 +222,7 @@ export const mockDB = {
         | "phone"
         | "notes"
         | "branchId"
+        | "assignedTrainerId"
         | "packageName"
         | "packageTotalPrice"
         | "packageTotalSessions"

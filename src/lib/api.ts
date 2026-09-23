@@ -494,6 +494,7 @@ function mapMember(r: Record<string, unknown>): Member {
     phone: r.phone as string | null,
     notes: r.notes as string | null,
     createdAt: r.created_at as string,
+    assignedTrainerId: (r.assigned_trainer_id as string | null) ?? null,
     packageName: (r.package_name as string | null) ?? null,
     packageTotalPrice: (r.package_total_price as number | null) ?? null,
     packageTotalSessions: (r.package_total_sessions as number | null) ?? null,
@@ -511,11 +512,23 @@ export async function listMembers(branchId: string): Promise<Member[]> {
   return mockDB.get().members.filter((m) => m.branchId === branchId);
 }
 
-export async function createMember(input: { branchId: string; fullName: string; phone: string | null; notes: string | null }): Promise<Member> {
+export async function createMember(input: {
+  branchId: string;
+  fullName: string;
+  phone: string | null;
+  notes: string | null;
+  assignedTrainerId: string | null;
+}): Promise<Member> {
   if (isSupabaseConfigured && supabase) {
     const { data, error } = await supabase
       .from("members")
-      .insert({ branch_id: input.branchId, full_name: input.fullName, phone: input.phone, notes: input.notes })
+      .insert({
+        branch_id: input.branchId,
+        full_name: input.fullName,
+        phone: input.phone,
+        notes: input.notes,
+        assigned_trainer_id: input.assignedTrainerId,
+      })
       .select()
       .single();
     if (error) throw error;
@@ -527,6 +540,7 @@ export async function createMember(input: { branchId: string; fullName: string; 
     fullName: input.fullName,
     phone: input.phone,
     notes: input.notes,
+    assignedTrainerId: input.assignedTrainerId,
     createdAt: new Date().toISOString(),
     packageName: null,
     packageTotalPrice: null,
@@ -545,6 +559,9 @@ export interface UpdateMemberInput {
   /** Reassigns which branch this member belongs to — only relevant for a
    * multi-branch org, and only owner/super_admin can change it (RLS-enforced). */
   branchId?: string;
+  /** The member's "home" PT — a specific session can still be logged under a
+   * different trainer (a handoff), but this is who their roster credits them to. */
+  assignedTrainerId?: string | null;
   /** Plain corrections to the current package's own fields — a typo fix, not
    * a new purchase. Never touches the payments ledger or the usage counter;
    * use addMemberPackage for an actual new, renewed, or queued package. */
@@ -560,6 +577,7 @@ export async function updateMember(id: string, input: UpdateMemberInput): Promis
     if (input.phone !== undefined) patch.phone = input.phone;
     if (input.notes !== undefined) patch.notes = input.notes;
     if (input.branchId !== undefined) patch.branch_id = input.branchId;
+    if (input.assignedTrainerId !== undefined) patch.assigned_trainer_id = input.assignedTrainerId;
     if (input.packageName !== undefined) patch.package_name = input.packageName;
     if (input.packageTotalPrice !== undefined) patch.package_total_price = input.packageTotalPrice;
     if (input.packageTotalSessions !== undefined) patch.package_total_sessions = input.packageTotalSessions;
@@ -571,6 +589,7 @@ export async function updateMember(id: string, input: UpdateMemberInput): Promis
     ...(input.fullName !== undefined && { fullName: input.fullName }),
     ...(input.phone !== undefined && { phone: input.phone }),
     ...(input.branchId !== undefined && { branchId: input.branchId }),
+    ...(input.assignedTrainerId !== undefined && { assignedTrainerId: input.assignedTrainerId }),
     ...(input.notes !== undefined && { notes: input.notes }),
     ...(input.packageName !== undefined && { packageName: input.packageName }),
     ...(input.packageTotalPrice !== undefined && { packageTotalPrice: input.packageTotalPrice }),
@@ -818,6 +837,20 @@ export async function updateSessionNote(id: string, notes: string | null): Promi
     return;
   }
   mockDB.updateSession(id, { notes });
+}
+
+/** Hands a booked session off to a colleague — the commission for that one
+ * session then attributes to whoever ends up as trainer_id, since revenue is
+ * computed per-session, not per-member. RLS only lets a trainer do this to a
+ * session that's currently their own, and only onto another trainer in the
+ * same branch (see sessions_update in migration 0017). */
+export async function reassignSessionTrainer(id: string, trainerId: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase.from("sessions").update({ trainer_id: trainerId }).eq("id", id);
+    if (error) throw error;
+    return;
+  }
+  mockDB.updateSession(id, { trainerId });
 }
 
 export async function cancelSession(id: string): Promise<void> {

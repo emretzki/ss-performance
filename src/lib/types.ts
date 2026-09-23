@@ -67,6 +67,11 @@ export interface Member {
   phone: string | null;
   notes: string | null;
   createdAt: string;
+  /** The PT this member belongs to — every member should have one, so a PT's
+   * own profile page can show their roster and an owner can see who's
+   * carrying how many students. A specific session can still be logged
+   * under a different (colleague) trainer; this is the member's "home" PT. */
+  assignedTrainerId: string | null;
   /** Free-form package the member bought — no catalog, entered per member. */
   packageName: string | null;
   packageTotalPrice: number | null;

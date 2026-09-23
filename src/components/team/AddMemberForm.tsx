@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Trash } from "@phosphor-icons/react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { PackageProgressBar } from "@/components/ui/PackageProgressBar";
-import { addMemberPackage, createMember, deleteUpcomingPackage, listMemberPackageHistory, updateMember } from "@/lib/api";
+import { addMemberPackage, createMember, deleteUpcomingPackage, listMemberPackageHistory, listTrainers, updateMember } from "@/lib/api";
 import type { Branch, Member } from "@/lib/types";
 
 const inputClass =
@@ -38,6 +38,7 @@ export function AddMemberForm({ defaultBranchId, branches, member, onClose, onCr
   const [phone, setPhone] = useState(member?.phone ?? "");
   const [notes, setNotes] = useState(member?.notes ?? "");
   const [branchId, setBranchId] = useState(member?.branchId ?? defaultBranchId);
+  const [assignedTrainerId, setAssignedTrainerId] = useState(member?.assignedTrainerId ?? "");
   const [packageName, setPackageName] = useState(member?.packageName ?? "");
   const [packageTotalPrice, setPackageTotalPrice] = useState(member?.packageTotalPrice?.toString() ?? "");
   const [packageTotalSessions, setPackageTotalSessions] = useState(member?.packageTotalSessions?.toString() ?? "");
@@ -66,8 +67,25 @@ export function AddMemberForm({ defaultBranchId, branches, member, onClose, onCr
     queryFn: () => listMemberPackageHistory(member!.id),
     enabled: Boolean(member?.id),
   });
+
+  // Scoped to the currently-picked branch, not defaultBranchId — a
+  // multi-branch owner can switch which branch this member belongs to right
+  // above, and the PT list has to follow that switch.
+  const { data: branchTrainers = [] } = useQuery({
+    queryKey: ["trainers", branchId],
+    queryFn: () => listTrainers(branchId),
+    enabled: Boolean(branchId),
+  });
   const upcoming = history.filter((p) => p.status === "upcoming");
   const completed = history.filter((p) => p.status === "completed");
+
+  // A branch switch can leave the picked PT belonging to the old branch —
+  // clear it instead of silently submitting a mismatched assignment.
+  useEffect(() => {
+    if (assignedTrainerId && !branchTrainers.some((t) => t.id === assignedTrainerId)) {
+      setAssignedTrainerId("");
+    }
+  }, [branchTrainers, assignedTrainerId]);
 
   function invalidateAll() {
     // Broad match (no branchId) on purpose: reassigning a member's branch
@@ -79,6 +97,10 @@ export function AddMemberForm({ defaultBranchId, branches, member, onClose, onCr
   async function handleSubmit() {
     if (!fullName.trim()) {
       setError("Üye adı gerekli.");
+      return;
+    }
+    if (!assignedTrainerId) {
+      setError("Bu üyenin bir PT'si seçilmeli.");
       return;
     }
     if (packageTotalPrice && !packageTotalSessions) {
@@ -94,6 +116,7 @@ export function AddMemberForm({ defaultBranchId, branches, member, onClose, onCr
           phone: phone.trim() || null,
           notes: notes.trim() || null,
           branchId,
+          assignedTrainerId,
           ...(hadPackage && {
             packageName: packageName.trim() || null,
             packageTotalPrice: totalPriceNum || null,
@@ -114,7 +137,13 @@ export function AddMemberForm({ defaultBranchId, branches, member, onClose, onCr
           });
         }
       } else {
-        await createMember({ branchId, fullName: fullName.trim(), phone: phone.trim() || null, notes: notes.trim() || null });
+        await createMember({
+          branchId,
+          fullName: fullName.trim(),
+          phone: phone.trim() || null,
+          notes: notes.trim() || null,
+          assignedTrainerId,
+        });
       }
       invalidateAll();
       onCreated();
@@ -190,6 +219,19 @@ export function AddMemberForm({ defaultBranchId, branches, member, onClose, onCr
             </select>
           </div>
         )}
+        <div>
+          <label className="mb-1.5 block text-[13px] font-medium text-[var(--color-ink-soft)]">PT</label>
+          <select value={assignedTrainerId} onChange={(e) => setAssignedTrainerId(e.target.value)} className={inputClass}>
+            <option value="" disabled>
+              PT seç
+            </option>
+            {branchTrainers.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.fullName}
+              </option>
+            ))}
+          </select>
+        </div>
         <div>
           <label className="mb-1.5 block text-[13px] font-medium text-[var(--color-ink-soft)]">Not (opsiyonel)</label>
           <input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Sakatlık geçmişi, tercihler vb." className={inputClass} />

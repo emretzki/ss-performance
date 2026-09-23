@@ -207,6 +207,7 @@ export function CalendarScreen() {
                 minute={selectedSlot.minute}
                 session={ownSession}
                 workoutTypes={workoutTypes}
+                colleagues={trainers.filter((t) => t.id !== profile.id)}
                 onClose={() => setSelectedSlot(null)}
                 onChanged={() => qc.invalidateQueries({ queryKey: ["sessions", activeBranchId] })}
               />
