@@ -381,6 +381,39 @@ export function ReportsScreen() {
                     </p>
                   </div>
                 </div>
+
+                {/* Toplu rakamın hemen altında bireysel kırılım — owner'ın her
+                    PT'yi tek tek seçmeden kim ne kadar prim hak etmiş görmesi
+                    için. Satıra dokunmak o PT'nin kendi bireysel görünümüne
+                    (aktivite + prim kartı) geçer. */}
+                {revenue.byTrainer.length > 0 && (
+                  <div className="mt-5 border-t pt-4" style={{ borderColor: "var(--color-ledger-line)" }}>
+                    <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-gold-soft)]">
+                      PT bazında prim
+                    </p>
+                    <div className="flex flex-col">
+                      {[...revenue.byTrainer]
+                        .sort((a, b) => b.commission - a.commission)
+                        .map((row) => {
+                          const trainer = trainers.find((t) => t.id === row.trainerId);
+                          return (
+                            <button
+                              key={row.trainerId}
+                              onClick={() => setSelectedTrainerId(row.trainerId)}
+                              className="-mx-2 flex items-center justify-between gap-3 rounded-[var(--radius-md)] px-2 py-2.5 text-left transition-colors duration-100 hover:bg-white/5"
+                            >
+                              <span className="truncate text-[13px] font-medium text-[var(--color-ledger-ink)]">
+                                {trainer?.fullName ?? "Bilinmeyen PT"}
+                              </span>
+                              <span className="shrink-0 font-display text-[15px] font-semibold tabular-nums text-[var(--color-gold-soft)]">
+                                {formatTL(row.commission)}
+                              </span>
+                            </button>
+                          );
+                        })}
+                    </div>
+                  </div>
+                )}
               </section>
             )}
 
