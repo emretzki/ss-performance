@@ -157,6 +157,18 @@ export function LandingScreen() {
     let folioObserver: IntersectionObserver | null = null;
     let heroCloseObserver: IntersectionObserver | null = null;
 
+    // Set once, imperatively, rather than via a `dangerouslySetInnerHTML`
+    // prop on the JSX below: that prop is a fresh object every render, and
+    // the intro overlay above re-renders this component twice on a timer
+    // (hold -> leaving -> done) in the second or so right after mount —
+    // exactly when ScrollCraft.mount() below is wiring itself up. Each of
+    // those re-renders would otherwise blow away and recreate the whole
+    // subtree, orphaning every observer/listener the engine just attached
+    // to the (now-discarded) previous copy, so pins, reveals and parallax
+    // would silently stop doing anything on the copy the visitor actually
+    // sees.
+    if (containerRef.current) containerRef.current.innerHTML = LANDING_MARKUP;
+
     ensureLandingAssets()
       .then(() => {
         if (cancelled || !containerRef.current || !window.ScrollCraft) return;
@@ -260,7 +272,7 @@ export function LandingScreen() {
 
   return (
     <>
-      <div ref={containerRef} dangerouslySetInnerHTML={{ __html: LANDING_MARKUP }} />
+      <div ref={containerRef} />
       {loginOpen && (
         <div className="gk-login-overlay" onClick={() => setLoginOpen(false)}>
           <div className="gk-login-card" onClick={(e) => e.stopPropagation()}>
