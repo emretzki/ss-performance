@@ -27,9 +27,6 @@ export function PTProfileScreen() {
   const { organization } = useOrganization();
   const canManage = profile?.role === "owner" || profile?.role === "super_admin";
 
-  // A trainer may look at their own page; anyone else's is owner/super_admin only.
-  if (!canManage && profile?.id !== trainerId) return <Navigate to="/team" replace />;
-
   const orgId = profile?.organizationId;
   const { data: orgTrainers = [] } = useQuery({
     queryKey: ["trainers-org", orgId],
@@ -59,6 +56,11 @@ export function PTProfileScreen() {
   });
   const trainerRevenue = revenue?.byTrainer.find((b) => b.trainerId === trainerId);
   const unitPrice = trainerRevenue && trainerRevenue.sessionCount > 0 ? trainerRevenue.sessionValue / trainerRevenue.sessionCount : 0;
+
+  // A trainer may look at their own page; anyone else's is owner/super_admin
+  // only. Checked after every hook above runs (not as an early return before
+  // them), so hook call order stays identical across renders.
+  if (!canManage && profile?.id !== trainerId) return <Navigate to="/team" replace />;
 
   if (!trainer) {
     return (
