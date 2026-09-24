@@ -81,6 +81,12 @@ export function Sidebar({ role }: SidebarProps) {
             Üyeler
           </NavLink>
         )}
+        {role === "trainer" && (
+          <NavLink to="/uyelerim" className={LINK_CLASS}>
+            <Users size={19} />
+            Üyelerim
+          </NavLink>
+        )}
         {role !== "trainer" && (
           <NavLink to="/settings" className={LINK_CLASS}>
             <GearSix size={19} />

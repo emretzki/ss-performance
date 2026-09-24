@@ -606,6 +606,19 @@ export async function updateMember(id: string, input: UpdateMemberInput): Promis
   return updated;
 }
 
+/** A trainer has no general write access to members (members_write is
+ * owner/super_admin only) — this narrow RPC lets them release only a
+ * member currently assigned to themselves ("artık bu üyeye ders
+ * vermiyorum"), enforced server-side (migration 0022). */
+export async function releaseMemberFromTrainer(memberId: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase.rpc("release_member_from_trainer", { target_member_id: memberId });
+    if (error) throw error;
+    return;
+  }
+  mockDB.updateMember(memberId, { assignedTrainerId: null });
+}
+
 // ---------------------------------------------------------------------------
 // Payments & branch expenses (revenue reporting)
 // ---------------------------------------------------------------------------

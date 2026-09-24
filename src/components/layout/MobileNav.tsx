@@ -67,6 +67,17 @@ export function MobileNav({ role }: MobileNavProps) {
         </NavLink>
       )}
 
+      {role === "trainer" && (
+        <NavLink to="/uyelerim" className={ITEM_CLASS}>
+          {({ isActive }) => (
+            <>
+              <Users size={22} weight={isActive ? "fill" : "regular"} />
+              Üyelerim
+            </>
+          )}
+        </NavLink>
+      )}
+
       <NavLink to="/profile" className={ITEM_CLASS}>
         {({ isActive }) => (
           <>
