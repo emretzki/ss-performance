@@ -143,22 +143,32 @@ describe("getCommissionPeriod", () => {
 });
 
 describe("displayStatus", () => {
-  it("devam eden bir ders 1 saati geçmediyse in_progress kalır", () => {
-    const now = new Date(2026, 8, 15, 10, 0, 0);
-    const startedAt = new Date(now.getTime() - 30 * 60_000).toISOString();
-    const s = session({ id: "s1", trainerId: "t1", memberId: null, status: "in_progress", startedAt });
+  // No "Dersi Başlat"/"Dersi Bitir" tap required — status is derived purely
+  // from startsAt + durationMin against the clock (mirrors the server-side
+  // auto_progress_sessions() cron, see migration 0020).
+  const startsAt = new Date(2026, 8, 15, 9, 0, 0).toISOString(); // 09:00, 60 dk
+
+  it("başlangıç saatinden önce scheduled kalır", () => {
+    const now = new Date(2026, 8, 15, 8, 59, 0);
+    const s = session({ id: "s1", trainerId: "t1", memberId: null, status: "scheduled", startsAt, durationMin: 60 });
+    expect(displayStatus(s, now)).toBe("scheduled");
+  });
+
+  it("başlangıç saati geldiyse (hâlâ DB'de scheduled olsa bile) in_progress gösterir", () => {
+    const now = new Date(2026, 8, 15, 9, 30, 0);
+    const s = session({ id: "s1", trainerId: "t1", memberId: null, status: "scheduled", startsAt, durationMin: 60 });
     expect(displayStatus(s, now)).toBe("in_progress");
   });
 
-  it("devam eden bir ders 1 saati geçtiyse done olarak gösterilir", () => {
-    const now = new Date(2026, 8, 15, 10, 0, 0);
-    const startedAt = new Date(now.getTime() - 90 * 60_000).toISOString();
-    const s = session({ id: "s1", trainerId: "t1", memberId: null, status: "in_progress", startedAt });
+  it("dersin süresi dolduysa done gösterir", () => {
+    const now = new Date(2026, 8, 15, 10, 1, 0);
+    const s = session({ id: "s1", trainerId: "t1", memberId: null, status: "in_progress", startsAt, durationMin: 60 });
     expect(displayStatus(s, now)).toBe("done");
   });
 
-  it("planlanmış bir ders olduğu gibi kalır", () => {
-    const s = session({ id: "s1", trainerId: "t1", memberId: null, status: "scheduled" });
-    expect(displayStatus(s)).toBe("scheduled");
+  it("iptal edilen bir ders saatten bağımsız olarak iptal edildi kalır", () => {
+    const now = new Date(2026, 8, 15, 9, 30, 0);
+    const s = session({ id: "s1", trainerId: "t1", memberId: null, status: "cancelled", startsAt, durationMin: 60 });
+    expect(displayStatus(s, now)).toBe("cancelled");
   });
 });

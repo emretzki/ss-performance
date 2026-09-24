@@ -4,7 +4,7 @@ import { X } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/Button";
 import { useIsDesktop } from "@/hooks/useMediaQuery";
 import { useEscapeClose } from "@/hooks/useEscapeClose";
-import { cancelSession, displayStatus, endSession, reassignSessionTrainer, startSession, updateSessionNote } from "@/lib/api";
+import { cancelSession, displayStatus, reassignSessionTrainer, updateSessionNote } from "@/lib/api";
 import { formatHourLabel } from "@/lib/calendarGrid";
 import type { GymSession, Trainer, WorkoutType } from "@/lib/types";
 
@@ -69,33 +69,6 @@ export function ManageSessionSheet({ day, hour, minute, session, workoutTypes, c
     }
   }
 
-  async function handleStart() {
-    setSaving(true);
-    setError(null);
-    try {
-      await startSession(session.id);
-      onChanged();
-    } catch {
-      setError("Ders başlatılamadı, tekrar dene.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleEnd() {
-    setSaving(true);
-    setError(null);
-    try {
-      await endSession(session.id);
-      onChanged();
-      onClose();
-    } catch {
-      setError("Ders bitirilemedi, tekrar dene.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
   async function handleHandoff() {
     if (!handoffTo) return;
     setHandingOff(true);
@@ -149,7 +122,8 @@ export function ManageSessionSheet({ day, hour, minute, session, workoutTypes, c
         {confirmingCancel ? (
           <div className="flex flex-col gap-4">
             <p className="text-[14px] text-[var(--color-ink)]">
-              Bu dersi iptal etmek istediğine emin misin? İptal edilen ders takvimde "İptal edildi" olarak görünmeye devam eder.
+              Bu dersi iptal etmek istediğine emin misin? Üyenin paketinden bu ders geri sayılır — dersin gerçekten
+              verildiğini fark edersen üye kartından tekrar geri yükleyebilirsin.
             </p>
             {error && <p className="text-[13px] text-[var(--color-danger)]">{error}</p>}
             <div className="flex gap-2">
@@ -163,15 +137,6 @@ export function ManageSessionSheet({ day, hour, minute, session, workoutTypes, c
           </div>
         ) : (
           <>
-            {status !== "done" && (
-              <Button size="lg" onClick={status === "in_progress" ? handleEnd : handleStart} disabled={saving}>
-                {saving ? "İşleniyor..." : status === "in_progress" ? "Dersi Bitir" : "Dersi Başlat"}
-              </Button>
-            )}
-            {status === "in_progress" && (
-              <p className="-mt-3 text-[12px] text-[var(--color-ash)]">Bitirmezsen 1 saat sonunda otomatik tamamlanır.</p>
-            )}
-
             <div>
               <label className="mb-1.5 block text-[13px] font-medium text-[var(--color-ink-soft)]">Not</label>
               <textarea
@@ -183,7 +148,7 @@ export function ManageSessionSheet({ day, hour, minute, session, workoutTypes, c
               />
             </div>
 
-            {status !== "done" && colleagues.length > 0 && (
+            {colleagues.length > 0 && (
               <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] p-3">
                 <p className="mb-1.5 text-[13px] font-medium text-[var(--color-ink-soft)]">Dersi devret</p>
                 <p className="mb-2.5 text-[12px] text-[var(--color-ash)]">
@@ -217,11 +182,9 @@ export function ManageSessionSheet({ day, hour, minute, session, workoutTypes, c
               <Button variant="secondary" size="lg" onClick={handleSaveNote} disabled={saving}>
                 {saving ? "Kaydediliyor..." : "Notu kaydet"}
               </Button>
-              {status !== "done" && (
-                <button onClick={() => setConfirmingCancel(true)} className="h-10 text-[13px] font-medium text-[var(--color-danger)]">
-                  Dersi iptal et
-                </button>
-              )}
+              <button onClick={() => setConfirmingCancel(true)} className="h-10 text-[13px] font-medium text-[var(--color-danger)]">
+                Dersi iptal et
+              </button>
             </div>
           </>
         )}

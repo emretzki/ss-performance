@@ -3,7 +3,6 @@ import { mockDB, subscribeMockDB } from "./mockStore";
 import { slugify, tenantHandoffUrl } from "./tenant";
 import {
   DEFAULT_MAX_SESSIONS_PER_SLOT,
-  LIVE_SESSION_AUTO_END_MIN,
   PT_BADGE_COLORS,
   type Branch,
   type BranchExpense,
@@ -48,13 +47,20 @@ function overlaps(aStart: number, aEnd: number, bStart: number, bEnd: number) {
   return aStart < bEnd && bStart < aEnd;
 }
 
-/** A session left running past its 1-hour cap displays as done even before the cron job persists it. */
+/** Sessions progress scheduled -> in_progress -> done purely off the clock —
+ * no "Dersi Başlat"/"Dersi Bitir" tap required (PTs reliably weren't making
+ * them). A server-side cron (auto_progress_sessions(), every minute)
+ * eventually persists the same transitions; this mirrors that logic
+ * client-side so the UI reflects it immediately rather than waiting up to a
+ * minute for the cron to catch up. */
 export function displayStatus(session: GymSession, now: Date = new Date()): SessionStatus {
-  if (session.status === "in_progress" && session.startedAt) {
-    const startedMs = new Date(session.startedAt).getTime();
-    if (now.getTime() - startedMs >= LIVE_SESSION_AUTO_END_MIN * 60_000) return "done";
-  }
-  return session.status;
+  if (session.status === "cancelled" || session.status === "done") return session.status;
+  const startMs = new Date(session.startsAt).getTime();
+  const endMs = startMs + session.durationMin * 60_000;
+  const nowMs = now.getTime();
+  if (nowMs >= endMs) return "done";
+  if (nowMs >= startMs) return "in_progress";
+  return "scheduled";
 }
 
 // ---------------------------------------------------------------------------
@@ -853,6 +859,9 @@ export async function reassignSessionTrainer(id: string, trainerId: string): Pro
   mockDB.updateSession(id, { trainerId });
 }
 
+/** Credits the session back to the member's package (bump_member_package_usage
+ * decrements package_sessions_used whenever a row transitions to 'cancelled' —
+ * see migration 0013). */
 export async function cancelSession(id: string): Promise<void> {
   if (isSupabaseConfigured && supabase) {
     const { error } = await supabase.from("sessions").update({ status: "cancelled" }).eq("id", id);
@@ -862,24 +871,39 @@ export async function cancelSession(id: string): Promise<void> {
   mockDB.updateSession(id, { status: "cancelled" });
 }
 
-export async function startSession(id: string): Promise<void> {
-  const startedAt = new Date().toISOString();
+/** Sessions with a member, cancelled at any point — surfaced on the
+ * member's own card so a mistaken/regretted cancellation can be corrected
+ * without losing track of it. */
+export async function listCancelledSessionsForMember(memberId: string): Promise<GymSession[]> {
   if (isSupabaseConfigured && supabase) {
-    const { error } = await supabase.from("sessions").update({ status: "in_progress", started_at: startedAt }).eq("id", id);
+    const { data, error } = await supabase
+      .from("sessions")
+      .select("*")
+      .eq("member_id", memberId)
+      .eq("status", "cancelled")
+      .order("starts_at", { ascending: false });
     if (error) throw error;
-    return;
+    return data.map(mapSession);
   }
-  mockDB.updateSession(id, { status: "in_progress", startedAt });
+  return mockDB
+    .get()
+    .sessions.filter((s) => s.memberId === memberId && s.status === "cancelled")
+    .sort((a, b) => new Date(b.startsAt).getTime() - new Date(a.startsAt).getTime());
 }
 
-export async function endSession(id: string): Promise<void> {
-  const endedAt = new Date().toISOString();
+/** Undoes a cancellation — "sonradan inisiyatif kullanarak" restoring a
+ * session the PT decides, in retrospect, should count after all. Marked
+ * straight to 'done' since a cancelled session is virtually always in the
+ * past by the time anyone revisits it; the transition away from
+ * 'cancelled' is what re-charges the member's package (same trigger as
+ * cancelSession, run in reverse). */
+export async function restoreCancelledSession(id: string): Promise<void> {
   if (isSupabaseConfigured && supabase) {
-    const { error } = await supabase.from("sessions").update({ status: "done", ended_at: endedAt }).eq("id", id);
+    const { error } = await supabase.from("sessions").update({ status: "done" }).eq("id", id);
     if (error) throw error;
     return;
   }
-  mockDB.updateSession(id, { status: "done", endedAt });
+  mockDB.updateSession(id, { status: "done" });
 }
 
 async function getBranchCapacity(branchId: string): Promise<number> {

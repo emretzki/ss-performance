@@ -150,7 +150,6 @@ export interface GymSession {
 
 export const SLOT_MINUTES = 30;
 export const DEFAULT_MAX_SESSIONS_PER_SLOT = 3;
-export const LIVE_SESSION_AUTO_END_MIN = 60;
 
 export const PT_BADGE_COLORS = [
   "var(--color-pt-clay)",

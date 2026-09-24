@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { loginAsMock, signOut } from "./helpers";
+import { gotoPinned, loginAsMock, signOut } from "./helpers";
 
 // Fixture math this test relies on (src/lib/mockStore.ts, untouched by this
 // test): trainer t1 (Emre Korkmaz) has today's 09:00 session s1 against
@@ -9,7 +9,7 @@ import { loginAsMock, signOut } from "./helpers";
 // no member attached). After the handoff: 1 ders, 800 TL ortalama, 400 TL prim.
 test("bir PT kendi dersini bir meslektaşına devredebilir, prim devralana yazılır", async ({ page }) => {
   await loginAsMock(page, "Emre Korkmaz");
-  await page.goto("/takvim");
+  await gotoPinned(page, "/takvim");
   await page.getByText("Dolu", { exact: false }).click();
 
   await expect(page.getByText("Dersi devret", { exact: false })).toBeVisible();
@@ -20,7 +20,7 @@ test("bir PT kendi dersini bir meslektaşına devredebilir, prim devralana yazı
 
   await signOut(page);
   await loginAsMock(page, "Ayşe Sport");
-  await page.goto("/team");
+  await gotoPinned(page, "/team");
   await page.getByText("PT'ler", { exact: false }).click();
   await page.getByText("Cem Yıldız", { exact: false }).first().click();
 

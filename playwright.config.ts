@@ -12,6 +12,14 @@ export default defineConfig({
   use: {
     baseURL: "http://localhost:5183",
     trace: "retain-on-failure",
+    // mockStore.ts builds fixture session times off local-time Date methods
+    // (setHours), same as the app's own "today" logic. Pinning the browser's
+    // timezone keeps that mapping from local hour to UTC instant identical
+    // wherever the suite runs — without this, a CI runner (typically UTC)
+    // and a dev machine in another zone would seed the "same" 09:00 fixture
+    // session at different absolute instants, silently breaking any test
+    // whose pinned clock (see e2e/helpers.ts) was tuned against one zone.
+    timezoneId: "Europe/Istanbul",
   },
   webServer: {
     command: "npm run dev -- --port 5183",

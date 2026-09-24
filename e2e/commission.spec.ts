@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { loginAsMock, signOut } from "./helpers";
+import { gotoPinned, loginAsMock, signOut } from "./helpers";
 
 async function readDenizStats(page: import("@playwright/test").Page) {
-  await page.goto("/team");
+  await gotoPinned(page, "/team");
   await page.getByText("PT'ler", { exact: false }).click();
   await page.getByText("Deniz Aksoy", { exact: false }).first().click();
   await expect(page).toHaveURL(/\/team\//);
@@ -22,7 +22,7 @@ async function readDenizStats(page: import("@playwright/test").Page) {
 test("bir üyeye ders girilince, o dersin priminin doğru PT'ye yansıdığı Raporlar/PT profilinde görünür", async ({ page }) => {
   // 1) Owner: paketli, Deniz Aksoy'a atanmış yeni bir üye oluştur.
   await loginAsMock(page, "Ayşe Sport");
-  await page.goto("/uyeler");
+  await gotoPinned(page, "/uyeler");
   await page.getByText("Üye ekle", { exact: false }).click();
   await page.locator('label:text("Ad Soyad") + input').fill("E2E Prim Üyesi");
   await page.locator('label:text("PT") + select').selectOption({ label: "Deniz Aksoy" });
@@ -38,7 +38,7 @@ test("bir üyeye ders girilince, o dersin priminin doğru PT'ye yansıdığı Ra
   // 2) Deniz Aksoy olarak bu üyeye bugün, boş bir saatte ders gir.
   await signOut(page);
   await loginAsMock(page, "Deniz Aksoy");
-  await page.goto("/takvim");
+  await gotoPinned(page, "/takvim");
   await page.getByLabel("Ders eklemek için dokun").first().click();
   await page.getByPlaceholder("İsimle ara").fill("E2E Prim Üyesi");
   await page.getByText("E2E Prim Üyesi", { exact: false }).last().click();

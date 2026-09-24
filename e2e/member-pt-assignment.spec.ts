@@ -1,9 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { loginAsMock } from "./helpers";
+import { gotoPinned, loginAsMock } from "./helpers";
 
 test("PT seçilmeden üye eklenemez, seçilince eklenir ve listede PT adıyla görünür", async ({ page }) => {
   await loginAsMock(page, "Ayşe Sport");
-  await page.goto("/uyeler");
+  await gotoPinned(page, "/uyeler");
 
   await page.getByText("Üye ekle", { exact: false }).click();
   const nameInput = page.locator('label:text("Ad Soyad") + input');

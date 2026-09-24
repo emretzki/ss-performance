@@ -25,20 +25,29 @@ interface SlotCellProps {
 
 export function SlotCell({ sessions, startingSessions, capacity, trainerVisual, workoutTypeColor, height, onClick, isPast }: SlotCellProps) {
   const now = new Date();
+  // Capacity ("Dolu") only cares about sessions still genuinely occupying
+  // the slot right now — a session that has already run its course frees
+  // the slot up. But the calendar is also today's record of what happened,
+  // so what actually *draws* an avatar must not use this same filter: with
+  // status now auto-progressing off the clock (no "Dersi Başlat/Bitir" tap
+  // needed), a session reaches "done" within moments of its own scheduled
+  // end, and excluding it here would make every past session vanish from
+  // the grid almost as soon as it happened.
   const isActive = (s: GymSession) => s.status !== "cancelled" && displayStatus(s, now) !== "done";
   const active = sessions.filter(isActive);
   const full = active.length >= capacity;
   const compact = height < 64;
 
+  const visible = sessions.filter((s) => s.status !== "cancelled");
   const startingIds = new Set(startingSessions.map((s) => s.id));
-  const startingActive = active.filter((s) => startingIds.has(s.id));
-  // Sessions that began in an earlier slot and are still running through
-  // this one: already have a chip up there, so they get a small continuation
+  const startingVisible = visible.filter((s) => startingIds.has(s.id));
+  // Sessions that began in an earlier slot and are still shown through this
+  // one: already have a chip up there, so they get a small continuation
   // mark here instead of a second chip.
-  const continuing = active.filter((s) => !startingIds.has(s.id));
+  const continuing = visible.filter((s) => !startingIds.has(s.id));
 
-  const shown = startingActive.slice(0, 3);
-  const overflow = startingActive.length - shown.length;
+  const shown = startingVisible.slice(0, 3);
+  const overflow = startingVisible.length - shown.length;
 
   return (
     <button
@@ -53,7 +62,7 @@ export function SlotCell({ sessions, startingSessions, capacity, trainerVisual, 
       )}
       aria-label={full ? "Bu saat dolu" : "Ders eklemek için dokun"}
     >
-      {active.length === 0 ? (
+      {visible.length === 0 ? (
         <span className="text-[13px] text-[var(--color-line-strong)] opacity-0 transition-opacity duration-100 group-hover:opacity-100">+</span>
       ) : (
         <>

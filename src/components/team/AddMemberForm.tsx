@@ -4,7 +4,16 @@ import { Trash } from "@phosphor-icons/react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { PackageProgressBar } from "@/components/ui/PackageProgressBar";
-import { addMemberPackage, createMember, deleteUpcomingPackage, listMemberPackageHistory, listTrainers, updateMember } from "@/lib/api";
+import {
+  addMemberPackage,
+  createMember,
+  deleteUpcomingPackage,
+  listCancelledSessionsForMember,
+  listMemberPackageHistory,
+  listTrainers,
+  restoreCancelledSession,
+  updateMember,
+} from "@/lib/api";
 import type { Branch, Member } from "@/lib/types";
 
 const inputClass =
@@ -12,6 +21,10 @@ const inputClass =
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("tr-TR");
+}
+
+function formatDateTime(iso: string): string {
+  return new Date(iso).toLocaleString("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
 function formatTL(n: number): string {
@@ -79,6 +92,13 @@ export function AddMemberForm({ defaultBranchId, branches, member, onClose, onCr
   const upcoming = history.filter((p) => p.status === "upcoming");
   const completed = history.filter((p) => p.status === "completed");
 
+  const { data: cancelledSessions = [] } = useQuery({
+    queryKey: ["cancelled-sessions", member?.id],
+    queryFn: () => listCancelledSessionsForMember(member!.id),
+    enabled: Boolean(member?.id),
+  });
+  const [restoringId, setRestoringId] = useState<string | null>(null);
+
   // A branch switch can leave the picked PT belonging to the old branch —
   // clear it instead of silently submitting a mismatched assignment.
   useEffect(() => {
@@ -91,7 +111,20 @@ export function AddMemberForm({ defaultBranchId, branches, member, onClose, onCr
     // Broad match (no branchId) on purpose: reassigning a member's branch
     // means both the old and new branch's member lists need to refresh.
     qc.invalidateQueries({ queryKey: ["members"] });
-    if (member) qc.invalidateQueries({ queryKey: ["member-packages", member.id] });
+    if (member) {
+      qc.invalidateQueries({ queryKey: ["member-packages", member.id] });
+      qc.invalidateQueries({ queryKey: ["cancelled-sessions", member.id] });
+    }
+  }
+
+  async function handleRestoreSession(id: string) {
+    setRestoringId(id);
+    try {
+      await restoreCancelledSession(id);
+      invalidateAll();
+    } finally {
+      setRestoringId(null);
+    }
   }
 
   async function handleSubmit() {
@@ -383,6 +416,38 @@ export function AddMemberForm({ defaultBranchId, branches, member, onClose, onCr
                   </p>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {cancelledSessions.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <p className="text-[13px] font-medium text-[var(--color-ink-soft)]">İptal edilen dersler</p>
+            <p className="text-[12px] text-[var(--color-ash)]">
+              Bu üyenin iptal edilmiş dersleri paketinden düşülmedi. Bir tanesi aslında verildiyse "Geri yükle"ye
+              basarak tekrar pakete yansıtabilirsin.
+            </p>
+            <div className="flex flex-col divide-y divide-[var(--color-line)] rounded-[var(--radius-md)] border border-[var(--color-line)]">
+              {cancelledSessions.map((s) => {
+                const trainerName = branchTrainers.find((t) => t.id === s.trainerId)?.fullName ?? "Bilinmeyen PT";
+                return (
+                  <div key={s.id} className="flex items-center gap-3 px-3 py-2.5">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[13px] text-[var(--color-ink)]">{formatDateTime(s.startsAt)}</p>
+                      <p className="text-[12px] text-[var(--color-ash)]">{trainerName}</p>
+                    </div>
+                    <Button
+                      variant="secondary"
+                      size="md"
+                      className="shrink-0"
+                      onClick={() => handleRestoreSession(s.id)}
+                      disabled={restoringId === s.id}
+                    >
+                      {restoringId === s.id ? "Geri yükleniyor..." : "Geri yükle"}
+                    </Button>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
