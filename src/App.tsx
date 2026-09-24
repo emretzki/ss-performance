@@ -63,6 +63,7 @@ export default function App() {
         <Route path="/signup" element={<SignupScreen />} />
         <Route path="/gizlilik-politikasi" element={<PrivacyScreen />} />
         <Route path="/kullanim-kosullari" element={<TermsScreen />} />
+        <Route path="/rehber" element={<GuideScreen />} />
         <Route path="/admin" element={<AdminScreen />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

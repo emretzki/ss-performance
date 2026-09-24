@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -22,18 +23,29 @@ function Steps({ items }: { items: string[] }) {
 export function GuideScreen() {
   const { profile } = useAuth();
   const role = profile?.role;
-  const isOwner = role === "owner" || role === "super_admin";
-  const isTrainer = role === "trainer";
+  // Reachable both signed in (per-role view) and from the public landing
+  // domain, before signup, as a selling point in outreach material — with
+  // no profile there's no role to branch on, so show the combined picture
+  // (both the owner's and the PT's day-to-day) rather than nothing.
+  const isOwner = !profile || role === "owner" || role === "super_admin";
+  const isTrainer = !profile || role === "trainer";
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 lg:p-6">
+    <div className={profile ? "flex-1 overflow-y-auto p-4 lg:p-6" : "min-h-[100dvh] bg-[var(--color-paper)] p-4 lg:p-6"}>
       <div className="mx-auto flex max-w-[64ch] flex-col gap-6 pb-10">
+        {!profile && (
+          <Link to="/" className="text-[13px] font-medium text-[var(--color-gold)] underline underline-offset-4">
+            ← gymkoc.com'a dön
+          </Link>
+        )}
         <div>
           <h1 className="font-display text-[26px] font-bold leading-none text-[var(--color-ink)]">Kullanım kılavuzu</h1>
           <p className="mt-1.5 text-[13px] text-[var(--color-ash)]">
-            {isOwner
-              ? "Şube sahibi olarak günlük kullanımın ve ders girme adımların."
-              : "PT olarak günlük kullanımın: ders girme, başlatma ve bitirme."}
+            {!profile
+              ? "gymkoc'ta bir gününüz nasıl geçer — şube sahibi ve PT gözünden."
+              : isOwner
+                ? "Şube sahibi olarak günlük kullanımın ve ders girme adımların."
+                : "PT olarak günlük kullanımın: ders girme, başlatma ve bitirme."}
           </p>
         </div>
 
