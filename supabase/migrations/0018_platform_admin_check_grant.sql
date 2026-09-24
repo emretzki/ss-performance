@@ -1,0 +1,11 @@
+-- AdminScreen inferred "unauthorized" only from an RPC *error*, but
+-- platform_admin_list_organizations() never errors for a non-admin caller —
+-- by design it just returns zero rows (see 0007_platform_admin.sql). Since
+-- an empty array is truthy in JS, the client fell through to the normal
+-- "ready" dashboard with every stat at 0 and no rows, indistinguishable
+-- from a real admin whose org list is genuinely empty. This is exactly
+-- what happened when the wrong account logged into gymkoc.com/admin: no
+-- error, no rows, and a dashboard that looked broken instead of denied.
+-- Exposing is_platform_admin() itself lets the client check authorization
+-- as its own explicit step, before ever calling the list RPC.
+grant execute on function is_platform_admin() to authenticated;

@@ -31,6 +31,17 @@ export function AdminScreen() {
 
   async function loadDashboard() {
     if (!supabase) return;
+    // Checked as its own explicit step rather than inferred from the list
+    // RPC's result: that RPC never errors for a non-admin caller, it just
+    // returns zero rows (by design) — indistinguishable in JS from a real
+    // admin whose org list happens to be empty (an empty array is truthy).
+    // Without this check, the wrong account logging in saw a "ready"
+    // dashboard with everything at 0 instead of a clear access-denied screen.
+    const { data: isAdmin, error: adminError } = await supabase.rpc("is_platform_admin");
+    if (adminError || !isAdmin) {
+      setPhase("unauthorized");
+      return;
+    }
     const { data, error } = await supabase.rpc("platform_admin_list_organizations");
     if (error || !data) {
       setPhase("unauthorized");
