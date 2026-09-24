@@ -140,6 +140,13 @@ export function LandingScreen() {
   const [introPhase, setIntroPhase] = useState<IntroPhase>(() =>
     window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "done" : "hold",
   );
+  // The raw markup below is set imperatively (see the mount effect) before
+  // its stylesheet has necessarily finished loading — on a slow connection
+  // that shows unstyled HTML for a beat instead of the themed page. Keep it
+  // invisible until the stylesheet + engine are actually ready, whatever
+  // that takes, instead of gambling on the intro animation's fixed timer
+  // always winning that race.
+  const [assetsLoaded, setAssetsLoaded] = useState(false);
 
   useEffect(() => {
     if (introPhase === "done") return;
@@ -171,7 +178,9 @@ export function LandingScreen() {
 
     ensureLandingAssets()
       .then(() => {
-        if (cancelled || !containerRef.current || !window.ScrollCraft) return;
+        if (cancelled) return;
+        setAssetsLoaded(true);
+        if (!containerRef.current || !window.ScrollCraft) return;
         window.ScrollCraft.mount(containerRef.current);
 
         // ---- Signature move: object-to-interface hard cut ------------------
@@ -228,6 +237,9 @@ export function LandingScreen() {
       })
       .catch((err) => {
         console.error(err);
+        // Reveal anyway rather than leaving the page permanently blank —
+        // an unstyled page beats an invisible one.
+        if (!cancelled) setAssetsLoaded(true);
       });
 
     return () => {
@@ -272,7 +284,7 @@ export function LandingScreen() {
 
   return (
     <>
-      <div ref={containerRef} />
+      <div ref={containerRef} style={{ visibility: assetsLoaded ? "visible" : "hidden" }} />
       {loginOpen && (
         <div className="gk-login-overlay" onClick={() => setLoginOpen(false)}>
           <div className="gk-login-card" onClick={(e) => e.stopPropagation()}>
@@ -312,8 +324,19 @@ export function LandingScreen() {
         </div>
       )}
       {introPhase !== "done" && (
-        <div className={`gk-intro${introPhase === "leaving" ? " gk-intro--leaving" : ""}`} aria-hidden="true">
-          <svg className="gk-intro__bolt" viewBox="0 0 32 32" fill="none">
+        <div
+          className={`gk-intro${introPhase === "leaving" ? " gk-intro--leaving" : ""}`}
+          aria-hidden="true"
+          // Inline fallback for the handful of frames before page.css has
+          // actually loaded: without this, the intro's own positioning and
+          // background come from that stylesheet too, so on a slow
+          // connection it briefly renders as a small inline icon instead of
+          // an opaque cover — exposing the unstyled markup underneath for a
+          // flash instead of hiding it. Once the real CSS loads these are
+          // simply overridden by the (identical) authored rules.
+          style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", background: "#0A1122" }}
+        >
+          <svg className="gk-intro__bolt" viewBox="0 0 32 32" fill="none" style={{ width: "min(130vmin, 1600px)", height: "min(130vmin, 1600px)" }}>
             <path d="M17 3 L8 18 L14.5 18 L13 29 L25 13 L18 13 Z" fill="#B8F028" />
           </svg>
         </div>
