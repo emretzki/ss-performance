@@ -176,13 +176,24 @@ export const mockDB = {
     if (session.memberId && session.status !== "cancelled") bumpMemberUsage(session.memberId, 1);
     persist();
   },
-  updateSession(id: string, patch: Partial<Pick<GymSession, "notes" | "status" | "startedAt" | "endedAt" | "trainerId">>) {
+  updateSession(id: string, patch: Partial<Pick<GymSession, "notes" | "status" | "startedAt" | "endedAt" | "trainerId" | "cancelRefunded">>) {
     const before = db.sessions.find((s) => s.id === id);
-    db = { ...db, sessions: db.sessions.map((s) => (s.id === id ? { ...s, ...patch } : s)) };
+    let fullPatch = patch;
     if (before && patch.status && patch.status !== before.status && before.memberId) {
-      if (before.status !== "cancelled" && patch.status === "cancelled") bumpMemberUsage(before.memberId, -1);
-      else if (before.status === "cancelled" && patch.status !== "cancelled") bumpMemberUsage(before.memberId, 1);
+      if (before.status !== "cancelled" && patch.status === "cancelled") {
+        // Only refund if the class hadn't actually started yet — once it
+        // has (in_progress/done), the time was already used. Remembered on
+        // the row so a later restore mirrors it instead of re-deriving from
+        // "now", which would have drifted by the time anyone restores it.
+        const refunded = new Date(before.startsAt).getTime() > Date.now();
+        if (refunded) bumpMemberUsage(before.memberId, -1);
+        fullPatch = { ...patch, cancelRefunded: refunded };
+      } else if (before.status === "cancelled" && patch.status !== "cancelled") {
+        if (before.cancelRefunded) bumpMemberUsage(before.memberId, 1);
+        fullPatch = { ...patch, cancelRefunded: null };
+      }
     }
+    db = { ...db, sessions: db.sessions.map((s) => (s.id === id ? { ...s, ...fullPatch } : s)) };
     persist();
   },
   updateProfileAvatar(profileId: string, avatarUrl: string) {

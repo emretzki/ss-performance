@@ -805,6 +805,7 @@ function mapSession(r: Record<string, unknown>): GymSession {
     endedAt: (r.ended_at as string | null) ?? null,
     createdBy: r.created_by as string,
     createdAt: r.created_at as string,
+    cancelRefunded: (r.cancel_refunded as boolean | null) ?? null,
   };
 }
 

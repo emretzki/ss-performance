@@ -122,8 +122,11 @@ export function ManageSessionSheet({ day, hour, minute, session, workoutTypes, c
         {confirmingCancel ? (
           <div className="flex flex-col gap-4">
             <p className="text-[14px] text-[var(--color-ink)]">
-              Bu dersi iptal etmek istediğine emin misin? Üyenin paketinden bu ders geri sayılır — dersin gerçekten
-              verildiğini fark edersen üye kartından tekrar geri yükleyebilirsin.
+              Bu dersi iptal etmek istediğine emin misin?{" "}
+              {status === "scheduled"
+                ? "Ders henüz başlamadığı için üyenin paketine geri sayılır."
+                : "Ders başlamış olduğu için üyenin paketinden düşülmüş kalır, iade edilmez."}{" "}
+              Fikrini değiştirirsen üye kartından tekrar geri yükleyebilirsin.
             </p>
             {error && <p className="text-[13px] text-[var(--color-danger)]">{error}</p>}
             <div className="flex gap-2">

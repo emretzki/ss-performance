@@ -424,8 +424,8 @@ export function AddMemberForm({ defaultBranchId, branches, member, onClose, onCr
           <div className="flex flex-col gap-2">
             <p className="text-[13px] font-medium text-[var(--color-ink-soft)]">İptal edilen dersler</p>
             <p className="text-[12px] text-[var(--color-ash)]">
-              Bu üyenin iptal edilmiş dersleri paketinden düşülmedi. Bir tanesi aslında verildiyse "Geri yükle"ye
-              basarak tekrar pakete yansıtabilirsin.
+              Ders başlamadan iptal edilenler üyenin paketine iade edildi; başladıktan sonra iptal edilenler paketten
+              düşülmüş kaldı. Bir tanesi aslında verildiyse "Geri yükle"ye basarak (tekrar) pakete yansıtabilirsin.
             </p>
             <div className="flex flex-col divide-y divide-[var(--color-line)] rounded-[var(--radius-md)] border border-[var(--color-line)]">
               {cancelledSessions.map((s) => {
@@ -434,7 +434,9 @@ export function AddMemberForm({ defaultBranchId, branches, member, onClose, onCr
                   <div key={s.id} className="flex items-center gap-3 px-3 py-2.5">
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[13px] text-[var(--color-ink)]">{formatDateTime(s.startsAt)}</p>
-                      <p className="text-[12px] text-[var(--color-ash)]">{trainerName}</p>
+                      <p className="text-[12px] text-[var(--color-ash)]">
+                        {trainerName} · {s.cancelRefunded ? "pakete iade edildi" : "paketten düşülü kaldı"}
+                      </p>
                     </div>
                     <Button
                       variant="secondary"

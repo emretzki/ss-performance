@@ -146,6 +146,12 @@ export interface GymSession {
   endedAt: string | null;
   createdBy: string;
   createdAt: string;
+  /** Set when this row is (or was) cancelled: true if cancelling credited
+   * the session back to the member's package (it hadn't started yet at the
+   * time), false if it hadn't (already in progress/done — no free session
+   * handed back), null once restored. Only meaningful while/after
+   * status has been 'cancelled'. */
+  cancelRefunded?: boolean | null;
 }
 
 export const SLOT_MINUTES = 30;
