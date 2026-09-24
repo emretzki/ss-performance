@@ -5,6 +5,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useBranch } from "@/contexts/BranchContext";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { getBranchRevenue, getCommissionPeriod, getOrgRevenue, getTrainerStats, listTrainers, listTrainersForOrg, listWorkoutTypes } from "@/lib/api";
+import { downloadCsv } from "@/lib/csv";
+import { Download } from "@phosphor-icons/react";
 import clsx from "clsx";
 
 function formatTL(n: number): string {
@@ -178,6 +180,46 @@ export function ReportsScreen() {
     enabled: isAllBranches ? branches.length > 0 : Boolean(scopedBranchId),
   });
   const trainerRevenue = trainerId ? revenue?.byTrainer.find((b) => b.trainerId === trainerId) : undefined;
+
+  function handleExportCsv() {
+    if (!revenue) return;
+    const periodLabel = formatPeriodLabel(periodStart, periodEnd);
+    const rows: string[][] = [
+      ["Dönem", periodLabel],
+      ["Toplam ciro", String(Math.round(revenue.totalRevenue))],
+      ["Giderler", String(Math.round(revenue.totalExpenses))],
+      ["Toplam prim", String(Math.round(revenue.commissionPayable))],
+      ["Salon karı", String(Math.round(revenue.ownerProfit))],
+      [],
+      [
+        "PT adı",
+        ...(isAllBranches ? ["Şube"] : []),
+        "Ders sayısı",
+        "Ortalama ders ücreti (TL)",
+        "Ders değeri toplamı (TL)",
+        "Prim (TL)",
+      ],
+      ...[...revenue.byTrainer]
+        .sort((a, b) => b.commission - a.commission)
+        .map((row) => {
+          const trainer = trainers.find((t) => t.id === row.trainerId);
+          const unitPrice = row.sessionCount > 0 ? row.sessionValue / row.sessionCount : 0;
+          return [
+            trainer?.fullName ?? "Bilinmeyen PT",
+            ...(isAllBranches ? [branches.find((b) => b.id === trainer?.branchId)?.name ?? ""] : []),
+            String(row.sessionCount),
+            String(Math.round(unitPrice)),
+            String(Math.round(row.sessionValue)),
+            String(Math.round(row.commission)),
+          ];
+        }),
+    ];
+    const slug = isAllBranches ? (organization?.slug ?? "org") : (branches.find((b) => b.id === scopedBranchId)?.name ?? "sube");
+    downloadCsv(
+      `prim-${slug}-${periodStart.toISOString().slice(0, 10)}_${periodEnd.toISOString().slice(0, 10)}.csv`,
+      rows,
+    );
+  }
 
   const allStatsQueries = useQueries({
     queries: trainers.map((t) => ({
@@ -401,9 +443,18 @@ export function ReportsScreen() {
                     (aktivite + prim kartı) geçer. */}
                 {revenue.byTrainer.length > 0 && (
                   <div className="mt-5 border-t pt-4" style={{ borderColor: "var(--color-ledger-line)" }}>
-                    <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-gold-soft)]">
-                      PT bazında prim
-                    </p>
+                    <div className="mb-2.5 flex items-center justify-between gap-3">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-gold-soft)]">
+                        PT bazında prim
+                      </p>
+                      <button
+                        onClick={handleExportCsv}
+                        className="flex shrink-0 items-center gap-1 text-[11px] font-medium text-[var(--color-gold-soft)] hover:text-[var(--color-gold)]"
+                      >
+                        <Download size={13} weight="bold" />
+                        CSV indir
+                      </button>
+                    </div>
                     <div className="flex flex-col">
                       {[...revenue.byTrainer]
                         .sort((a, b) => b.commission - a.commission)

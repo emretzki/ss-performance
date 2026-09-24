@@ -31,3 +31,9 @@ scrollcraft/builds/*/lab/
 
 # Supabase CLI local cache
 supabase/.temp/
+
+# Playwright test runner output
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

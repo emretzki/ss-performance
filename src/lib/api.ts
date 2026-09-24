@@ -1098,7 +1098,7 @@ export interface RevenueSummary {
   byTrainer: { trainerId: string; sessionCount: number; sessionValue: number; commission: number }[];
 }
 
-function computeRevenue(
+export function computeRevenue(
   sessions: GymSession[],
   members: Member[],
   trainers: Trainer[],

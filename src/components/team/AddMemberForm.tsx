@@ -137,13 +137,27 @@ export function AddMemberForm({ defaultBranchId, branches, member, onClose, onCr
           });
         }
       } else {
-        await createMember({
+        const created = await createMember({
           branchId,
           fullName: fullName.trim(),
           phone: phone.trim() || null,
           notes: notes.trim() || null,
           assignedTrainerId,
         });
+        // Package fields were optional above the fold, on the same form — if
+        // they were filled in, this is the member's first-ever package, not
+        // a separate step the owner has to remember to come back for.
+        if (totalSessionsNum > 0 && totalPriceNum > 0 && packageName.trim()) {
+          await addMemberPackage({
+            memberId: created.id,
+            branchId,
+            name: packageName.trim(),
+            totalPrice: totalPriceNum,
+            totalSessions: totalSessionsNum,
+            paidAt,
+            startNow: true,
+          });
+        }
       }
       invalidateAll();
       onCreated();

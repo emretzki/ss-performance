@@ -1,15 +1,27 @@
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { useBranch } from "@/contexts/BranchContext";
-import { displayStatus, getTrainerStats, listSessions, listTrainers } from "@/lib/api";
+import { useOrganization } from "@/contexts/OrganizationContext";
+import { displayStatus, getBranchRevenue, getCommissionPeriod, getTrainerStats, listMembers, listSessions, listTrainers } from "@/lib/api";
 import { formatHourLabel } from "@/lib/calendarGrid";
 import { StatCard } from "@/components/ui/StatCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 
 const UPCOMING_LIMIT = 6;
 
+function formatTL(n: number): string {
+  return `${Math.round(n).toLocaleString("tr-TR")} TL`;
+}
+
+function formatPeriodLabel(start: Date, end: Date): string {
+  const lastDay = new Date(end.getTime() - 86400000);
+  const fmt = (d: Date) => d.toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
+  return `${fmt(start)} – ${fmt(lastDay)}`;
+}
+
 export function OverviewScreen() {
   const { activeBranchId } = useBranch();
+  const { organization } = useOrganization();
 
   const { data: trainers = [] } = useQuery({
     queryKey: ["trainers", activeBranchId],
@@ -35,6 +47,28 @@ export function OverviewScreen() {
       enabled: Boolean(activeBranchId),
     })),
   });
+
+  // Uyarılar — ayrı bir bildirim merkezi/rozet sistemi yerine mevcut
+  // veriden her yüklemede yeniden türetilir: okundu/kapatma durumu yok,
+  // dönem ilerledikçe veya paket yenilendikçe kendiliğinden güncel kalır.
+  const { data: members = [] } = useQuery({
+    queryKey: ["members", activeBranchId],
+    queryFn: () => listMembers(activeBranchId as string),
+    enabled: Boolean(activeBranchId),
+  });
+  const endingPackages = members.filter((m) => m.packageTotalSessions && m.packageTotalSessions - m.packageSessionsUsed <= 2);
+
+  const { start: currentPeriodStart } = getCommissionPeriod(organization?.commissionPeriodStartDay ?? 1);
+  const { start: prevPeriodStart, end: prevPeriodEnd } = getCommissionPeriod(
+    organization?.commissionPeriodStartDay ?? 1,
+    new Date(currentPeriodStart.getTime() - 1),
+  );
+  const { data: prevRevenue } = useQuery({
+    queryKey: ["branch-revenue", activeBranchId, prevPeriodStart.toISOString()],
+    queryFn: () => getBranchRevenue(activeBranchId as string, prevPeriodStart, prevPeriodEnd),
+    enabled: Boolean(activeBranchId),
+  });
+  const hasAlerts = endingPackages.length > 0 || Boolean(prevRevenue && prevRevenue.commissionPayable > 0);
 
   if (trainers.length === 0) {
     return <EmptyState message="Bu şubede henüz PT kaydı yok." />;
@@ -74,6 +108,48 @@ export function OverviewScreen() {
             Tüm rapor
           </Link>
         </div>
+
+        {hasAlerts && (
+          <div className="flex flex-col gap-2">
+            <p className="text-[13px] font-medium text-[var(--color-ink-soft)]">Uyarılar</p>
+
+            {prevRevenue && prevRevenue.commissionPayable > 0 && (
+              <Link
+                to="/reports"
+                className="flex items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-[var(--color-gold)] bg-[var(--color-gold-tint)] px-4 py-3"
+              >
+                <div className="min-w-0">
+                  <p className="text-[14px] font-medium text-[var(--color-ink)]">
+                    Önceki dönem kapandı · {formatPeriodLabel(prevPeriodStart, prevPeriodEnd)}
+                  </p>
+                  <p className="text-[12px] text-[var(--color-ink-soft)]">PT'lere ödenmesi gereken toplam prim</p>
+                </div>
+                <p className="shrink-0 font-display text-[18px] font-bold tabular-nums text-[var(--color-gold-deep)]">
+                  {formatTL(prevRevenue.commissionPayable)}
+                </p>
+              </Link>
+            )}
+
+            {endingPackages.length > 0 && (
+              <div className="flex flex-col divide-y divide-[var(--color-line)] rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)]">
+                {endingPackages.map((m) => {
+                  const left = Math.max(0, (m.packageTotalSessions ?? 0) - m.packageSessionsUsed);
+                  return (
+                    <Link key={m.id} to="/uyeler" className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--color-surface-2)]">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[14px] font-medium text-[var(--color-ink)]">{m.fullName}</p>
+                        <p className="truncate text-[12px] text-[var(--color-ash)]">{m.packageName} · paketi bitmek üzere</p>
+                      </div>
+                      <span className="shrink-0 text-[12px] font-medium text-[var(--color-danger)]">
+                        {left === 0 ? "Bitti" : `${left} ders kaldı`}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
           <StatCard label="Bugün toplam ders" value={todaySessions.length} />
