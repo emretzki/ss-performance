@@ -38,7 +38,7 @@ test("bir üyeye ders girilince, o dersin priminin doğru PT'ye yansıdığı Ra
   // 2) Deniz Aksoy olarak bu üyeye bugün, boş bir saatte ders gir.
   await signOut(page);
   await loginAsMock(page, "Deniz Aksoy");
-  await gotoPinned(page, "/takvim");
+  await gotoPinned(page, "/calendar");
   await page.getByLabel("Ders eklemek için dokun").first().click();
   await page.getByPlaceholder("İsimle ara").fill("E2E Prim Üyesi");
   await page.getByText("E2E Prim Üyesi", { exact: false }).last().click();

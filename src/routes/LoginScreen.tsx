@@ -28,7 +28,7 @@ export function LoginScreen() {
     }
   }, [profile, tenantOrg, signOut]);
 
-  if (profile && !wrongTenant) return <Navigate to="/calendar" replace />;
+  if (profile && !wrongTenant) return <Navigate to={profile.role === "trainer" ? "/ders-gir" : "/calendar"} replace />;
 
   async function handleForgotSubmit(e: FormEvent) {
     e.preventDefault();

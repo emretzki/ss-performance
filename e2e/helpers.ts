@@ -37,7 +37,9 @@ export async function gotoPinned(page: Page, url: string) {
 export async function loginAsMock(page: Page, fullNameContains: string) {
   await gotoPinned(page, "/");
   await page.getByText(fullNameContains, { exact: false }).first().click();
-  await expect(page).toHaveURL(/\/calendar/);
+  // A trainer's default landing is now /ders-gir (its new quick-log home
+  // screen); owner/super_admin still land on /calendar.
+  await expect(page).toHaveURL(/\/(calendar|ders-gir)/);
 }
 
 export async function signOut(page: Page) {

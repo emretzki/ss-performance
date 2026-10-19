@@ -14,6 +14,7 @@ import { TermsScreen } from "@/routes/TermsScreen";
 import { AdminScreen } from "@/routes/AdminScreen";
 import { ResetPasswordScreen } from "@/routes/ResetPasswordScreen";
 import { CalendarScreen } from "@/components/calendar/CalendarScreen";
+import { QuickLogScreen } from "@/routes/QuickLogScreen";
 import { OverviewScreen } from "@/routes/OverviewScreen";
 import { ReportsScreen } from "@/routes/ReportsScreen";
 import { TeamScreen } from "@/routes/TeamScreen";
@@ -52,8 +53,11 @@ function TenantNotFound({ slug }: { slug: string }) {
 }
 
 export default function App() {
-  const { passwordRecovery } = useAuth();
+  const { passwordRecovery, profile } = useAuth();
   const tenant = useTenant();
+  // A PT's home screen is the quick-log flow, not the scheduling-oriented
+  // calendar — the calendar stays available as its own tab, just not first.
+  const defaultRoute = profile?.role === "trainer" ? "/ders-gir" : "/calendar";
 
   if (tenant.status === "loading") return null;
 
@@ -87,6 +91,7 @@ export default function App() {
           </RequireAuth>
         }
       >
+        <Route path="/ders-gir" element={<QuickLogScreen />} />
         <Route path="/calendar" element={<CalendarScreen />} />
         <Route path="/overview" element={<OverviewScreen />} />
         <Route path="/reports" element={<ReportsScreen />} />
@@ -97,7 +102,7 @@ export default function App() {
         <Route path="/settings" element={<SettingsScreen />} />
         <Route path="/profile" element={<ProfileScreen />} />
         <Route path="/rehber" element={<GuideScreen />} />
-        <Route path="*" element={<Navigate to="/calendar" replace />} />
+        <Route path="*" element={<Navigate to={defaultRoute} replace />} />
       </Route>
     </Routes>
   );

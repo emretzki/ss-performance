@@ -1050,6 +1050,142 @@ function findNearestAvailable(daySessions: GymSession[], fromMs: number, duratio
   return null;
 }
 
+/** Most recently created session for this trainer (any status) — drives the
+ * "son dersini tekrarla" quick-repeat card and the default idman türü/süre
+ * for a fresh entry. Looks back 60 days; a PT inactive longer than that has
+ * nothing meaningful to repeat. */
+export async function getLastSessionForTrainer(trainerId: string, branchId: string): Promise<GymSession | null> {
+  const from = new Date();
+  from.setDate(from.getDate() - 60);
+  const to = new Date();
+  to.setDate(to.getDate() + 1);
+  const sessions = await listSessions(branchId, from, to);
+  const mine = sessions.filter((s) => s.trainerId === trainerId).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return mine[0] ?? null;
+}
+
+/** Consecutive days (ending today) with at least one non-cancelled session —
+ * computed client-side off a 30-day window, no new table. Loss-aversion
+ * nudge: PTs keep the number from dropping to 0. Stops counting at the first
+ * gap; "today" doesn't break the streak if it's simply not over yet (a day
+ * with zero sessions so far doesn't retroactively end the walk-back — the
+ * walk starts at yesterday and today is added only if it already has one). */
+export async function getTrainerStreak(trainerId: string, branchId: string): Promise<number> {
+  const from = new Date();
+  from.setDate(from.getDate() - 30);
+  from.setHours(0, 0, 0, 0);
+  const to = new Date();
+  to.setDate(to.getDate() + 1);
+  const sessions = (await listSessions(branchId, from, to)).filter((s) => s.trainerId === trainerId && s.status !== "cancelled");
+
+  const daysWithSession = new Set(sessions.map((s) => new Date(s.startsAt).toDateString()));
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  let streak = 0;
+  const cursor = new Date(today);
+  if (!daysWithSession.has(cursor.toDateString())) {
+    cursor.setDate(cursor.getDate() - 1); // today's empty so far — start counting from yesterday
+  }
+  while (daysWithSession.has(cursor.toDateString())) {
+    streak += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
+}
+
+export interface SuspiciousSession {
+  session: GymSession;
+  member: Member;
+  reason: string;
+}
+
+const DAY_NAMES_TR = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
+const MIN_HISTORY_FOR_PATTERN = 5;
+const OFF_HOURS_TOLERANCE_MS = 2 * 60 * 60_000;
+
+/** Flags sessions that land well outside a member's established day/time
+ * pattern — a PT over-logging a session both wrongly drains the member's
+ * package and wrongly earns that PT commission, so it's worth a şube
+ * sahibi's post-hoc glance. Pattern is derived from each member's own
+ * non-cancelled history, never configured — a member with under
+ * MIN_HISTORY_FOR_PATTERN past sessions has no established habit yet, so
+ * is skipped rather than risk a false positive. */
+export async function getSuspiciousSessions(branchId: string, from: Date, to: Date): Promise<SuspiciousSession[]> {
+  const historyFrom = new Date(from);
+  historyFrom.setDate(historyFrom.getDate() - 120);
+  const [periodSessions, historySessions, members] = await Promise.all([
+    listSessions(branchId, from, to),
+    listSessions(branchId, historyFrom, to),
+    listMembers(branchId),
+  ]);
+  const memberById = new Map(members.map((m) => [m.id, m]));
+
+  const flagged: SuspiciousSession[] = [];
+  for (const session of periodSessions) {
+    if (session.status === "cancelled" || !session.memberId) continue;
+    const member = memberById.get(session.memberId);
+    if (!member) continue;
+
+    const priorHistory = historySessions
+      .filter((s) => s.memberId === session.memberId && s.status !== "cancelled" && s.id !== session.id && new Date(s.startsAt) < new Date(session.startsAt))
+      .slice(-15);
+    if (priorHistory.length < MIN_HISTORY_FOR_PATTERN) continue;
+
+    const sessionDate = new Date(session.startsAt);
+    const sessionDay = sessionDate.getDay();
+    const sessionMinutes = sessionDate.getHours() * 60 + sessionDate.getMinutes();
+
+    const sameDayHistory = priorHistory.filter((s) => new Date(s.startsAt).getDay() === sessionDay);
+    if (sameDayHistory.length === 0) {
+      flagged.push({
+        session,
+        member,
+        reason: `${member.fullName} genelde ${summarizePattern(priorHistory)} ders alıyor — bu ders ${DAY_NAMES_TR[sessionDay]} günü, daha önce hiç bu günde ders almamış.`,
+      });
+      continue;
+    }
+
+    const minutesList = sameDayHistory.map((s) => {
+      const d = new Date(s.startsAt);
+      return d.getHours() * 60 + d.getMinutes();
+    });
+    const earliest = Math.min(...minutesList);
+    const latest = Math.max(...minutesList);
+    const outsideRange = sessionMinutes < earliest - OFF_HOURS_TOLERANCE_MS / 60_000 || sessionMinutes > latest + OFF_HOURS_TOLERANCE_MS / 60_000;
+    if (outsideRange) {
+      flagged.push({
+        session,
+        member,
+        reason: `${member.fullName} genelde ${summarizePattern(priorHistory)} ders alıyor — bu ders ${DAY_NAMES_TR[sessionDay]} ${formatClock(sessionMinutes)}'te girildi.`,
+      });
+    }
+  }
+
+  return flagged;
+}
+
+function formatClock(totalMinutes: number): string {
+  const h = Math.floor(totalMinutes / 60) % 24;
+  const m = totalMinutes % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+function summarizePattern(history: GymSession[]): string {
+  const dayNames = new Set<string>();
+  let minMinutes = Infinity;
+  let maxMinutes = -Infinity;
+  for (const s of history) {
+    const d = new Date(s.startsAt);
+    dayNames.add(DAY_NAMES_TR[d.getDay()]);
+    const minutes = d.getHours() * 60 + d.getMinutes();
+    minMinutes = Math.min(minMinutes, minutes);
+    maxMinutes = Math.max(maxMinutes, minutes);
+  }
+  const days = [...dayNames].join(" / ");
+  return `${days} günü ${formatClock(minMinutes)}-${formatClock(maxMinutes)} arası`;
+}
+
 export function subscribeToSessions(branchId: string, onChange: () => void): () => void {
   if (isSupabaseConfigured && supabase) {
     const client = supabase;

@@ -1,8 +1,9 @@
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
+import { WarningCircle } from "@phosphor-icons/react";
 import { useBranch } from "@/contexts/BranchContext";
 import { useOrganization } from "@/contexts/OrganizationContext";
-import { displayStatus, getBranchRevenue, getCommissionPeriod, getTrainerStats, listMembers, listSessions, listTrainers } from "@/lib/api";
+import { displayStatus, getBranchRevenue, getCommissionPeriod, getSuspiciousSessions, getTrainerStats, listMembers, listSessions, listTrainers } from "@/lib/api";
 import { formatHourLabel } from "@/lib/calendarGrid";
 import { StatCard } from "@/components/ui/StatCard";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -58,7 +59,7 @@ export function OverviewScreen() {
   });
   const endingPackages = members.filter((m) => m.packageTotalSessions && m.packageTotalSessions - m.packageSessionsUsed <= 2);
 
-  const { start: currentPeriodStart } = getCommissionPeriod(organization?.commissionPeriodStartDay ?? 1);
+  const { start: currentPeriodStart, end: currentPeriodEnd } = getCommissionPeriod(organization?.commissionPeriodStartDay ?? 1);
   const { start: prevPeriodStart, end: prevPeriodEnd } = getCommissionPeriod(
     organization?.commissionPeriodStartDay ?? 1,
     new Date(currentPeriodStart.getTime() - 1),
@@ -68,7 +69,17 @@ export function OverviewScreen() {
     queryFn: () => getBranchRevenue(activeBranchId as string, prevPeriodStart, prevPeriodEnd),
     enabled: Boolean(activeBranchId),
   });
-  const hasAlerts = endingPackages.length > 0 || Boolean(prevRevenue && prevRevenue.commissionPayable > 0);
+
+  // Her bir ders, girildiği PT'nin üyeden fazladan düşmesine ve haksız prim
+  // kazanmasına yol açabilir — üyenin geçmiş gün/saat alışkanlığından sapan
+  // dersler burada gösterilir, düzeltme için mevcut iptal/geri-yükleme akışı yeterli.
+  const { data: suspiciousSessions = [] } = useQuery({
+    queryKey: ["suspicious-sessions", activeBranchId, currentPeriodStart.toISOString()],
+    queryFn: () => getSuspiciousSessions(activeBranchId as string, currentPeriodStart, currentPeriodEnd),
+    enabled: Boolean(activeBranchId),
+  });
+
+  const hasAlerts = endingPackages.length > 0 || suspiciousSessions.length > 0 || Boolean(prevRevenue && prevRevenue.commissionPayable > 0);
 
   if (trainers.length === 0) {
     return <EmptyState message="Bu şubede henüz PT kaydı yok." />;
@@ -128,6 +139,25 @@ export function OverviewScreen() {
                   {formatTL(prevRevenue.commissionPayable)}
                 </p>
               </Link>
+            )}
+
+            {suspiciousSessions.length > 0 && (
+              <div className="flex flex-col divide-y divide-[var(--color-danger-tint)] rounded-[var(--radius-lg)] border border-[var(--color-danger)] bg-[var(--color-danger-tint)]">
+                {suspiciousSessions.map(({ session, reason }) => {
+                  const trainer = trainerById(session.trainerId);
+                  return (
+                    <Link key={session.id} to="/calendar" className="flex items-start gap-3 px-4 py-3 hover:opacity-90">
+                      <WarningCircle size={20} weight="fill" className="mt-0.5 shrink-0 text-[var(--color-danger)]" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[14px] font-medium text-[var(--color-ink)]">Şüpheli ders girişi</p>
+                        <p className="mt-0.5 text-[12px] text-[var(--color-ink-soft)]">
+                          {reason} {trainer ? `(${trainer.fullName} tarafından girildi.)` : ""}
+                        </p>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
             )}
 
             {endingPackages.length > 0 && (

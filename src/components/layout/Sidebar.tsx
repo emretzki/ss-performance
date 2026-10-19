@@ -1,6 +1,6 @@
 import { NavLink } from "react-router-dom";
 import clsx from "clsx";
-import { Barbell, BookOpen, CalendarBlank, ChartLineUp, GearSix, SignOut, SquaresFour, UserCircle, Users } from "@phosphor-icons/react";
+import { Barbell, BookOpen, CalendarBlank, ChartLineUp, GearSix, Lightning, SignOut, SquaresFour, UserCircle, Users } from "@phosphor-icons/react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBranch } from "@/contexts/BranchContext";
 import { useOrganization } from "@/contexts/OrganizationContext";
@@ -55,6 +55,12 @@ export function Sidebar({ role }: SidebarProps) {
       )}
 
       <nav className="flex flex-1 flex-col gap-1">
+        {role === "trainer" && (
+          <NavLink to="/ders-gir" className={LINK_CLASS}>
+            <Lightning size={19} />
+            Ders Gir
+          </NavLink>
+        )}
         <NavLink to="/calendar" className={LINK_CLASS}>
           <CalendarBlank size={19} />
           Takvim

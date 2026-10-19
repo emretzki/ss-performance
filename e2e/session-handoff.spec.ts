@@ -9,7 +9,7 @@ import { gotoPinned, loginAsMock, signOut } from "./helpers";
 // no member attached). After the handoff: 1 ders, 800 TL ortalama, 400 TL prim.
 test("bir PT kendi dersini bir meslektaşına devredebilir, prim devralana yazılır", async ({ page }) => {
   await loginAsMock(page, "Emre Korkmaz");
-  await gotoPinned(page, "/takvim");
+  await gotoPinned(page, "/calendar");
   await page.getByText("Dolu", { exact: false }).click();
 
   await expect(page.getByText("Dersi devret", { exact: false })).toBeVisible();

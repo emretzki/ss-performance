@@ -1,6 +1,6 @@
 import { NavLink } from "react-router-dom";
 import clsx from "clsx";
-import { CalendarBlank, ChartLineUp, SquaresFour, UserCircle, Users } from "@phosphor-icons/react";
+import { CalendarBlank, ChartLineUp, Lightning, SquaresFour, UserCircle, Users } from "@phosphor-icons/react";
 import type { Role } from "@/lib/types";
 
 interface MobileNavProps {
@@ -16,6 +16,17 @@ const ITEM_CLASS = ({ isActive }: { isActive: boolean }) =>
 export function MobileNav({ role }: MobileNavProps) {
   return (
     <nav className="flex border-t border-[var(--color-line)] bg-[var(--color-surface)] pb-[env(safe-area-inset-bottom)] lg:hidden">
+      {role === "trainer" && (
+        <NavLink to="/ders-gir" className={ITEM_CLASS}>
+          {({ isActive }) => (
+            <>
+              <Lightning size={22} weight={isActive ? "fill" : "regular"} />
+              Ders Gir
+            </>
+          )}
+        </NavLink>
+      )}
+
       <NavLink to="/calendar" className={ITEM_CLASS}>
         {({ isActive }) => (
           <>
