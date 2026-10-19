@@ -5,9 +5,11 @@ interface PackageProgressBarProps {
 }
 
 export function PackageProgressBar({ used, total, size = "sm" }: PackageProgressBarProps) {
-  const remaining = Math.max(0, total - used);
+  const rawRemaining = total - used;
+  const over = Math.max(0, -rawRemaining);
+  const remaining = Math.max(0, rawRemaining);
   const ratio = total > 0 ? Math.min(1, used / total) : 0;
-  const low = remaining <= 1 && total > 0;
+  const low = (remaining <= 1 && total > 0) || over > 0;
   const height = size === "lg" ? "h-2.5" : "h-1.5";
 
   return (
@@ -23,7 +25,15 @@ export function PackageProgressBar({ used, total, size = "sm" }: PackageProgress
       </div>
       {size === "lg" && (
         <p className="text-[12px] text-[var(--color-ash)]">
-          <span className="font-medium text-[var(--color-ink)]">{remaining}</span> ders kaldı · {used}/{total} kullanıldı
+          {over > 0 ? (
+            <span className="font-medium text-[var(--color-danger)]">{over} ders borçlu</span>
+          ) : (
+            <>
+              <span className="font-medium text-[var(--color-ink)]">{remaining}</span> ders kaldı
+            </>
+          )}
+          {" · "}
+          {used}/{total} kullanıldı
         </p>
       )}
     </div>

@@ -163,15 +163,15 @@ export function OverviewScreen() {
             {endingPackages.length > 0 && (
               <div className="flex flex-col divide-y divide-[var(--color-line)] rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)]">
                 {endingPackages.map((m) => {
-                  const left = Math.max(0, (m.packageTotalSessions ?? 0) - m.packageSessionsUsed);
+                  const left = (m.packageTotalSessions ?? 0) - m.packageSessionsUsed;
                   return (
                     <Link key={m.id} to="/uyeler" className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--color-surface-2)]">
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[14px] font-medium text-[var(--color-ink)]">{m.fullName}</p>
-                        <p className="truncate text-[12px] text-[var(--color-ash)]">{m.packageName} · paketi bitmek üzere</p>
+                        <p className="truncate text-[12px] text-[var(--color-ash)]">{m.packageName} · {left < 0 ? "paket aşıldı" : "paketi bitmek üzere"}</p>
                       </div>
                       <span className="shrink-0 text-[12px] font-medium text-[var(--color-danger)]">
-                        {left === 0 ? "Bitti" : `${left} ders kaldı`}
+                        {left > 0 ? `${left} ders kaldı` : left === 0 ? "Bitti" : `${Math.abs(left)} ders borçlu`}
                       </span>
                     </Link>
                   );

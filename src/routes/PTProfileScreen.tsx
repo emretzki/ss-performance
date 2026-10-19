@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { getBranchRevenue, getCommissionPeriod, getTrainerStats, listMembers, listTrainersForOrg } from "@/lib/api";
 import { PackageProgressBar } from "@/components/ui/PackageProgressBar";
+import { PackageRemainingBadge } from "@/components/ui/PackageRemainingBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
 
 function formatTL(n: number): string {
@@ -141,11 +142,7 @@ export function PTProfileScreen() {
                           {memberUnitPrice ? ` · ${formatTL(memberUnitPrice)}/ders` : ""}
                         </p>
                       </div>
-                      {m.packageTotalSessions && (
-                        <span className="shrink-0 text-[12px] font-medium text-[var(--color-ink-soft)]">
-                          {Math.max(0, m.packageTotalSessions - m.packageSessionsUsed)} ders kaldı
-                        </span>
-                      )}
+                      {Boolean(m.packageTotalSessions) && <PackageRemainingBadge used={m.packageSessionsUsed} total={m.packageTotalSessions!} />}
                     </div>
                     {Boolean(m.packageTotalSessions) && <PackageProgressBar used={m.packageSessionsUsed} total={m.packageTotalSessions!} />}
                   </div>

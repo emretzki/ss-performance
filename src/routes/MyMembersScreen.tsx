@@ -7,6 +7,7 @@ import { listMembers, releaseMemberFromTrainer } from "@/lib/api";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
 import { PackageProgressBar } from "@/components/ui/PackageProgressBar";
+import { PackageRemainingBadge } from "@/components/ui/PackageRemainingBadge";
 
 /** A trainer's own read-only roster: who they're currently training and how
  * many sessions each has left — no edit access (members_write stays
@@ -58,11 +59,7 @@ export function MyMembersScreen() {
                     <p className="truncate text-[14px] font-medium text-[var(--color-ink)]">{m.fullName}</p>
                     <p className="truncate text-[12px] text-[var(--color-ash)]">{m.packageName ?? m.phone ?? "Telefon eklenmedi"}</p>
                   </div>
-                  {m.packageTotalSessions && (
-                    <span className="shrink-0 text-[12px] font-medium text-[var(--color-ink-soft)]">
-                      {Math.max(0, m.packageTotalSessions - m.packageSessionsUsed)} ders kaldı
-                    </span>
-                  )}
+                  {Boolean(m.packageTotalSessions) && <PackageRemainingBadge used={m.packageSessionsUsed} total={m.packageTotalSessions!} />}
                 </div>
                 {Boolean(m.packageTotalSessions) && <PackageProgressBar used={m.packageSessionsUsed} total={m.packageTotalSessions!} />}
 

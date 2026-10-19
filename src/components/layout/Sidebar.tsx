@@ -55,7 +55,7 @@ export function Sidebar({ role }: SidebarProps) {
       )}
 
       <nav className="flex flex-1 flex-col gap-1">
-        {role === "trainer" && (
+        {(role === "trainer" || role === "owner") && (
           <NavLink to="/ders-gir" className={LINK_CLASS}>
             <Lightning size={19} />
             Ders Gir

@@ -7,6 +7,7 @@ import { useBranch } from "@/contexts/BranchContext";
 import { listMembers, listTrainers } from "@/lib/api";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PackageProgressBar } from "@/components/ui/PackageProgressBar";
+import { PackageRemainingBadge } from "@/components/ui/PackageRemainingBadge";
 import { AddMemberForm } from "@/components/team/AddMemberForm";
 import type { Member } from "@/lib/types";
 
@@ -132,11 +133,7 @@ export function MembersScreen() {
                       </p>
                     </div>
                     <PackageStatusBadge status={status} />
-                    {m.packageTotalSessions && (
-                      <span className="shrink-0 text-[12px] font-medium text-[var(--color-ink-soft)]">
-                        {Math.max(0, m.packageTotalSessions - m.packageSessionsUsed)} ders kaldı
-                      </span>
-                    )}
+                    {Boolean(m.packageTotalSessions) && <PackageRemainingBadge used={m.packageSessionsUsed} total={m.packageTotalSessions!} />}
                   </div>
                   {Boolean(m.packageTotalSessions) && <PackageProgressBar used={m.packageSessionsUsed} total={m.packageTotalSessions!} />}
                 </button>

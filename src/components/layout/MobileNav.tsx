@@ -16,7 +16,7 @@ const ITEM_CLASS = ({ isActive }: { isActive: boolean }) =>
 export function MobileNav({ role }: MobileNavProps) {
   return (
     <nav className="flex border-t border-[var(--color-line)] bg-[var(--color-surface)] pb-[env(safe-area-inset-bottom)] lg:hidden">
-      {role === "trainer" && (
+      {(role === "trainer" || role === "owner") && (
         <NavLink to="/ders-gir" className={ITEM_CLASS}>
           {({ isActive }) => (
             <>
