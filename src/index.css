@@ -57,18 +57,20 @@
   --shadow-float: 0 8px 24px rgba(23, 20, 15, 0.12);
 }
 
-/* Dark mode: same roles, editorial dark-navy values (matches the gymkoc
-   marketing site). Toggled by ThemeContext setting document.documentElement's
+/* Dark mode: a warm "notebook" dark (ecru ink on deep coffee-brown paper),
+   not a cold navy — same hue family as --color-ledger* below, just lighter
+   overall so it reads as an everyday surface rather than a once-in-a-while
+   financial panel. Toggled by ThemeContext setting document.documentElement's
    data-theme attribute; persisted per-browser in localStorage. */
 :root[data-theme="dark"] {
-  --color-ink: #f2f5ef;
-  --color-ink-soft: #93a0bc;
-  --color-ash: #6c7a9a;
-  --color-paper: #101830;
-  --color-surface: #172140;
-  --color-surface-2: #1c2850;
-  --color-line: #93a0bc24;
-  --color-line-strong: #93a0bc42;
+  --color-ink: #f5efe4;
+  --color-ink-soft: #c7bca4;
+  --color-ash: #9c9180;
+  --color-paper: #211c15;
+  --color-surface: #2c2520;
+  --color-surface-2: #38302a;
+  --color-line: rgba(245, 239, 228, 0.12);
+  --color-line-strong: rgba(245, 239, 228, 0.22);
 
   --color-danger: #ff6b6b;
   --color-danger-tint: #ff6b6b1f;
@@ -81,7 +83,7 @@
   --color-pt-plum: #9a7893;
   --color-pt-stone: #9c9384;
 
-  --shadow-float: 0 16px 40px rgba(4, 8, 20, 0.55);
+  --shadow-float: 0 16px 40px rgba(16, 12, 6, 0.5);
 
   color-scheme: dark;
 }

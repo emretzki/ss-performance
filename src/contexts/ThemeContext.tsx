@@ -25,7 +25,7 @@ function applyTheme(theme: Theme) {
   else root.removeAttribute("data-theme");
 
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute("content", theme === "dark" ? "#101830" : "#faf8f4");
+  if (meta) meta.setAttribute("content", theme === "dark" ? "#211c15" : "#faf8f4");
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
